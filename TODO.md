@@ -1,0 +1,5 @@
+- [x] Import SMColors in lib/app.dart
+- [x] Set BottomNavigationBar backgroundColor to SMColors.blue
+- [x] Set unselectedItemColor to SMColors.black
+- [x] Set selectedItemColor to SMColors.white
+- [ ] Add animation to bottom navigation bar items (enlarge on press)
