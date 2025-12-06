@@ -22,7 +22,7 @@ class KnowledgeModel {
       judul: map['judul'] ?? '',
       konten: map['konten'] ?? '',
       jenis: map['jenis'] ?? 'konseptual',
-      kesulitan: map['kesulitan'] ?? 'mudah',
+      kesulitan: map['kesulitan'] ?? 'kelas10',
     );
   }
 

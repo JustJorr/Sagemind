@@ -32,63 +32,103 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Profil')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (_currentUser != null) ...[
-              Text(
-                'Username: ${_currentUser!.username}',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Email: ${_currentUser!.email}',
-                style: const TextStyle(fontSize: 16),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Role: ${_currentUser!.role}',
-                style: const TextStyle(fontSize: 16),
-              ),
-              const SizedBox(height: 24),
-              if (_currentUser!.role == 'admin') ...[
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/admin');
-                  },
-                  child: const Text("Masuk Admin Panel"),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start, // ⬅ LEFT ALIGN INFO
+            children: [
+              const SizedBox(height: 16),
+
+              // Centered title ONLY
+              const Center(
+                child: Text(
+                  "Profil",
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
+              ),
+
+              const SizedBox(height: 32),
+
+              // User Info (Left aligned)
+              if (_currentUser != null) ...[
+                _infoTile("Username", _currentUser!.username),
+                const SizedBox(height: 12),
+
+                _infoTile("Email", _currentUser!.email),
+                const SizedBox(height: 12),
+
+                _infoTile("Role", _currentUser!.role),
+                const SizedBox(height: 32),
+
+                if (_currentUser!.role == 'admin')
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pushNamed(context, '/admin');
+                    },
+                    child: const Text("Masuk Admin Panel"),
+                  ),
+
                 const SizedBox(height: 16),
-              ],
-              ElevatedButton(
-                onPressed: _logout,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
+
+                // Centered logout button ONLY
+                Center(
+                  child: ElevatedButton(
+                    onPressed: _logout,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 12,
+                      ),
+                    ),
+                    child: const Text("Logout"),
+                  ),
                 ),
-                child: const Text("Logout"),
-              ),
-            ] else ...[
-              const Text(
-                'Loading user information...',
-                style: TextStyle(fontSize: 16),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _logout,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
+              ] else ...[
+                const CircularProgressIndicator(),
+                const SizedBox(height: 24),
+
+                Center(
+                  child: ElevatedButton(
+                    onPressed: _logout,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text("Logout"),
+                  ),
                 ),
-                child: const Text("Logout"),
-              ),
+              ]
             ],
-          ],
+          ),
         ),
       ),
+    );
+  }
+
+  // Reusable info item (still left aligned)
+  Widget _infoTile(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start, // ⬅ LEFT ALIGN TEXT
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontSize: 16, color: Colors.grey),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 }
