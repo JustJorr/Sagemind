@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/subject_model.dart';
 import '../models/knowledge_model.dart';
 import '../models/rule_model.dart';
+import '../models/user_model.dart';
 
 class FirestoreServices {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -21,6 +22,8 @@ class FirestoreServices {
       return SubjectModel.fromMap(d.id, data);
     }).toList();
   }
+
+  Future<List<SubjectModel>> getAllSubjects() => getSubjectsOnce();
 
   /// CREATE subject
   Future<void> createSubject(String name) async {
@@ -42,9 +45,6 @@ class FirestoreServices {
     await _db.collection('subjects').doc(id).delete();
   }
 
-  // --------------------------------------------------
-  // KNOWLEDGE / MATERIALS
-  // --------------------------------------------------
   Future<List<KnowledgeModel>> getKnowledgeBySubject(String subjectId) async {
     final snap = await _db
         .collection('knowledge')
@@ -96,9 +96,6 @@ class FirestoreServices {
     await _db.collection('knowledge').doc(id).delete();
   }
 
-  // --------------------------------------------------
-  // RULES
-  // --------------------------------------------------
   Future<List<RuleModel>> getRulesBySubject(String subjectId) async {
     final snap = await _db
         .collection('rules')
@@ -135,9 +132,6 @@ class FirestoreServices {
     await _db.collection('rules').doc(id).delete();
   }
 
-  // --------------------------------------------------
-  // RECOMMENDATION ENGINE
-  // --------------------------------------------------
   Future<RuleModel?> getRecommendationForMaterial(
     String materialId, {
     String? subjectId,
@@ -184,5 +178,51 @@ class FirestoreServices {
             k.judul.toLowerCase().contains(lower) ||
             k.konten.toLowerCase().contains(lower))
         .toList();
+  }
+
+  // User methods
+  Future<void> createUser(UserModel user) async {
+    await _db.collection('users').doc(user.id).set(user.toMap());
+  }
+
+  Future<UserModel?> getUserById(String id) async {
+    final doc = await _db.collection('users').doc(id).get();
+    if (!doc.exists) return null;
+    final data = doc.data() as Map<String, dynamic>;
+    return UserModel.fromMap(doc.id, data);
+  }
+
+  Future<UserModel?> getUserByEmail(String email) async {
+    final snap = await _db.collection('users').where('email', isEqualTo: email).limit(1).get();
+    if (snap.docs.isEmpty) return null;
+    final data = snap.docs.first.data();
+    return UserModel.fromMap(snap.docs.first.id, data);
+  }
+
+  Future<UserModel?> getUserByUsername(String username) async {
+    final snap = await _db.collection('users').where('username', isEqualTo: username).limit(1).get();
+    if (snap.docs.isEmpty) return null;
+    final data = snap.docs.first.data();
+    return UserModel.fromMap(snap.docs.first.id, data);
+  }
+
+  Future<void> updateUser(UserModel user) async {
+    await _db.collection('users').doc(user.id).update(user.toMap());
+  }
+
+  Future<void> deleteUser(String id) async {
+    await _db.collection('users').doc(id).delete();
+  }
+
+  Future<List<UserModel>> getAllUsers() async {
+    final snap = await _db.collection('users').get();
+    return snap.docs.map((d) {
+      final Map<String, dynamic> data = d.data();
+      return UserModel.fromMap(d.id, data);
+    }).toList();
+  }
+
+  Future<void> updateUserRole(String id, String newRole) async {
+    await _db.collection('users').doc(id).update({'role': newRole});
   }
 }

@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/colors.dart';
+import 'services/auth_service.dart';
+import 'models/user_model.dart';
+
+// Auth Screens
+import 'screen/login_screen.dart';
+import 'screen/register_screen.dart';
 
 // User Screens
 import 'screen/home_screen.dart';
@@ -17,6 +23,7 @@ import 'screen/admin/admin_dashboard_screen.dart';
 import 'screen/admin/admin_subject_screen.dart';
 import 'screen/admin/admin_material_screen.dart';
 import 'screen/admin/admin_rule_screen.dart';
+import 'screen/admin/admin_user_screen.dart';
 
 class SageMindApp extends StatefulWidget {
   const SageMindApp({super.key});
@@ -26,6 +33,7 @@ class SageMindApp extends StatefulWidget {
 }
 
 class _SageMindAppState extends State<SageMindApp> {
+  final AuthService _authService = AuthService();
   int _index = 0;
 
   static final List<Widget> _pages = [
@@ -41,46 +49,67 @@ class _SageMindAppState extends State<SageMindApp> {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
 
-      home: Scaffold(
-        body: _pages[_index],
-        bottomNavigationBar: BottomNavigationBar(
-          currentIndex: _index,
-          onTap: (i) => setState(() => _index = i),
-          backgroundColor: SMColors.blue,
-          selectedItemColor: SMColors.white,
-          unselectedItemColor: SMColors.black,
-          showSelectedLabels: true,
-          showUnselectedLabels: false,
-          items: [
-            BottomNavigationBarItem(
-              label: "Home",
-              icon: AnimatedScale(
-                scale: _index == 0 ? 1.3 : 1.0,
-                duration: const Duration(milliseconds: 200),
-                child: const Icon(Icons.home),
-              ),
-            ),
-            BottomNavigationBarItem(
-              label: "Profil",
-              icon: AnimatedScale(
-                scale: _index == 1 ? 1.3 : 1.0,
-                duration: const Duration(milliseconds: 200),
-                child: const Icon(Icons.person),
-              ),
-            ),
-            BottomNavigationBarItem(
-              label: "Cari",
-              icon: AnimatedScale(
-                scale: _index == 2 ? 1.3 : 1.0,
-                duration: const Duration(milliseconds: 200),
-                child: const Icon(Icons.search),
-              ),
-            ),
-          ],
-        ),
+      home: FutureBuilder<UserModel?>(
+        future: _authService.getUserFromPrefs(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
+          if (snapshot.hasData && snapshot.data != null) {
+            UserModel user = snapshot.data!;
+            if (user.role == 'admin') {
+              return const AdminDashboardScreen();
+            } else {
+              return Scaffold(
+                body: _pages[_index],
+                bottomNavigationBar: BottomNavigationBar(
+                  currentIndex: _index,
+                  onTap: (i) => setState(() => _index = i),
+                  backgroundColor: SMColors.blue,
+                  selectedItemColor: SMColors.white,
+                  unselectedItemColor: SMColors.black,
+                  showSelectedLabels: true,
+                  showUnselectedLabels: false,
+                  items: [
+                    BottomNavigationBarItem(
+                      label: "Home",
+                      icon: AnimatedScale(
+                        scale: _index == 0 ? 1.3 : 1.0,
+                        duration: const Duration(milliseconds: 200),
+                        child: const Icon(Icons.home),
+                      ),
+                    ),
+                    BottomNavigationBarItem(
+                      label: "Cari",
+                      icon: AnimatedScale(
+                        scale: _index == 2 ? 1.3 : 1.0,
+                        duration: const Duration(milliseconds: 200),
+                        child: const Icon(Icons.search),
+                      ),
+                    ),
+                    BottomNavigationBarItem(
+                      label: "Profil",
+                      icon: AnimatedScale(
+                        scale: _index == 1 ? 1.3 : 1.0,
+                        duration: const Duration(milliseconds: 200),
+                        child: const Icon(Icons.person),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+          } else {
+            return const LoginScreen();
+          }
+        },
       ),
 
       routes: {
+        "/login": (_) => const LoginScreen(),
+        "/register": (_) => const RegisterScreen(),
         "/recommendation": (_) => const RecommendationScreen(),
         "/recommendation/full": (_) => const RecommendationFullScreen(),
         "/specific_choices": (_) => const SpecificChoicesScreen(),
@@ -92,6 +121,7 @@ class _SageMindAppState extends State<SageMindApp> {
         "/admin/subjects": (_) => const AdminSubjectScreen(),
         "/admin/materials": (_) => const AdminMaterialScreen(),
         "/admin/rules": (_) => const AdminRuleScreen(),
+        "/admin/users": (_) => const AdminUserScreen(),
       },
     );
   }

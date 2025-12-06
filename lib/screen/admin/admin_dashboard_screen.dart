@@ -1,7 +1,39 @@
 import 'package:flutter/material.dart';
+import '../../services/auth_service.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
+
+  Future<void> _logout(BuildContext context) async {
+    final auth = AuthService();
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Logout"),
+          content: const Text("Are you sure you want to log out?"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text("Cancel"),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text("Logout", style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm == true) {
+      await auth.logout();
+      if (context.mounted) {
+        Navigator.pushReplacementNamed(context, '/login');
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -12,27 +44,69 @@ class AdminDashboardScreen extends StatelessWidget {
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
-        child: ListView(
+        child: Column(
           children: [
-            _menuCard(
-              context,
-              title: "Manage Subjects",
-              icon: Icons.menu_book_rounded,
-              route: "/admin/subjects",
+            // --- Admin Header Card ---
+            Card(
+              color: Colors.blue.shade50,
+              child: ListTile(
+                leading: const Icon(Icons.admin_panel_settings, size: 40, color: Colors.blue),
+                title: const Text(
+                  "Administrator Panel",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                subtitle: const Text("Manage subjects, materials, rules, and users"),
+              ),
             ),
-            const SizedBox(height: 12),
-            _menuCard(
-              context,
-              title: "Manage Materials",
-              icon: Icons.library_books,
-              route: "/admin/materials",
+
+            const SizedBox(height: 16),
+
+            // --- Dashboard Menu ---
+            Expanded(
+              child: ListView(
+                children: [
+                  _menuCard(
+                    context,
+                    title: "Manage Subjects",
+                    icon: Icons.menu_book_rounded,
+                    route: "/admin/subjects",
+                  ),
+                  const SizedBox(height: 12),
+                  _menuCard(
+                    context,
+                    title: "Manage Materials",
+                    icon: Icons.library_books,
+                    route: "/admin/materials",
+                  ),
+                  const SizedBox(height: 12),
+                  _menuCard(
+                    context,
+                    title: "Manage Rules",
+                    icon: Icons.rule_folder,
+                    route: "/admin/rules",
+                  ),
+                  const SizedBox(height: 12),
+                  _menuCard(
+                    context,
+                    title: "Manage Users",
+                    icon: Icons.people,
+                    route: "/admin/users",
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 12),
-            _menuCard(
-              context,
-              title: "Manage Rules",
-              icon: Icons.rule_folder,
-              route: "/admin/rules",
+
+            const SizedBox(height: 20),
+
+            // --- Logout Button (Bottom) ---
+            ElevatedButton(
+              onPressed: () => _logout(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(double.infinity, 48),
+              ),
+              child: const Text("Logout"),
             ),
           ],
         ),
