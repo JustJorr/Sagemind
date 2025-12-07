@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:device_info_plus/device_info_plus.dart';
 
 class PermissionService {
   static final PermissionService _instance = PermissionService._internal();
@@ -11,7 +10,7 @@ class PermissionService {
 
   PermissionService._internal();
 
-  /// Request video/storage permissions based on Android version
+  /// Request video/storage permissions
   Future<bool> requestVideoPermission() async {
     if (Platform.isIOS) {
       final status = await Permission.photos.request();
@@ -19,40 +18,56 @@ class PermissionService {
     }
 
     if (Platform.isAndroid) {
-      final deviceInfo = DeviceInfoPlugin();
-      final androidInfo = await deviceInfo.androidInfo;
-      final sdk = androidInfo.version.sdkInt;
-
-      // Android 13+ → USE READ_MEDIA_VIDEO
-      if (sdk >= 33) {
-        final status = await Permission.videos.request();
-        return status.isGranted;
+      // Try READ_MEDIA_VIDEO first (Android 13+)
+      var status = await Permission.videos.request();
+      if (status.isGranted) {
+        return true;
       }
-
-      // Android 12 and below → STORAGE permission
-      final status = await Permission.storage.request();
+      
+      // Fall back to storage permission (Android 12 and below)
+      status = await Permission.storage.request();
       return status.isGranted;
     }
 
     return false;
   }
 
-  /// Check if permission is already granted
+  /// Check if video permission is already granted
   Future<bool> isVideoPermissionGranted() async {
     if (Platform.isIOS) {
       return (await Permission.photos.status).isGranted;
     }
 
     if (Platform.isAndroid) {
-      final deviceInfo = DeviceInfoPlugin();
-      final androidInfo = await deviceInfo.androidInfo;
-      final sdk = androidInfo.version.sdkInt;
-
-      if (sdk >= 33) {
-        return (await Permission.videos.status).isGranted;
+      final videoStatus = await Permission.videos.status;
+      if (videoStatus.isGranted) {
+        return true;
       }
+      
+      final storageStatus = await Permission.storage.status;
+      return storageStatus.isGranted;
+    }
 
-      return (await Permission.storage.status).isGranted;
+    return false;
+  }
+
+  /// Request file/document permissions (PDF, DOC, DOCX, etc.)
+    Future<bool> requestFilePermission() async {
+    if (Platform.isIOS) {
+      final status = await Permission.photos.request();
+      return status.isGranted;
+    }
+
+    if (Platform.isAndroid) {
+      // Try READ_MEDIA_VISUAL_USER_SELECTED first (Android 14+)
+      var status = await Permission.mediaLibrary.request();
+      if (status.isGranted) {
+        return true;
+      }
+      
+      // Fall back to storage permission (Android 13 and below)
+      status = await Permission.storage.request();
+      return status.isGranted;
     }
 
     return false;

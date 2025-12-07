@@ -35,9 +35,16 @@ class _AdminMaterialScreenState extends State<AdminMaterialScreen> {
     _subjects = await _fs.getSubjectsOnce();
 
     if (_subjects.isNotEmpty) {
-      _selectedSubject = _subjects.first;
+      if (_selectedSubject != null &&
+          _subjects.any((s) => s.id == _selectedSubject!.id)) {
+        _selectedSubject = _subjects.firstWhere((s) => s.id == _selectedSubject!.id);
+      } else {
+        _selectedSubject = _subjects.first;
+      }
+
       await _loadMaterials(_selectedSubject!.id);
     } else {
+      _selectedSubject = null;
       _materials = [];
     }
 
@@ -80,7 +87,10 @@ class _AdminMaterialScreenState extends State<AdminMaterialScreen> {
               child: Column(
                 children: [
                   DropdownButtonFormField<SubjectModel>(
-                    value: _selectedSubject,
+                    value: (_selectedSubject != null &&
+                          _subjects.contains(_selectedSubject))
+                        ? _selectedSubject
+                        : null,
                     items: _subjects
                         .map((s) =>
                             DropdownMenuItem(value: s, child: Text(s.nama)))
@@ -195,6 +205,7 @@ class AddEditMaterialScreen extends StatefulWidget {
 }
 
 class _AddEditMaterialScreenState extends State<AddEditMaterialScreen> {
+  final allowedLevels = ['kelas10', 'kelas11', 'kelas12'];
   final _formKey = GlobalKey<FormState>();
   final FirestoreServices _fs = FirestoreServices();
 
@@ -206,35 +217,58 @@ class _AddEditMaterialScreenState extends State<AddEditMaterialScreen> {
 
   List<SubjectModel> _subjects = [];
   String? _selectedSubjectId;
+  bool _subjectsLoaded = false;
 
-  // --- VIDEO UPLOAD FIELDS ---
+  // Video & Documents
   File? _selectedVideo;
   String? _videoUrl;
   bool _uploadingVideo = false;
+  File? _selectedDocument;
+  List<Map<String, String>> _uploadedDocuments = [];
+  bool _uploadingDocument = false;
 
   bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    if (widget.initial != null) {
-      _judulCtrl.text = widget.initial!.judul;
-      _kontenCtrl.text = widget.initial!.konten;
-      _jenis = widget.initial!.jenis;
-      _kesulitan = widget.initial!.kesulitan;
-      _selectedSubjectId = widget.initial!.subjectId;
-      _videoUrl = widget.initial!.videoUrl;
-    }
     _loadSubjects();
   }
 
   Future<void> _loadSubjects() async {
     final subjects = await _fs.getSubjectsOnce();
+
+    // Remove duplicates
+    final Map<String, SubjectModel> map = {};
+    for (var s in subjects) map[s.id] = s;
+    final unique = map.values.toList();
+    final initialLevel = widget.initial?.kesulitan;
+
+    String? initialId = widget.initial?.subjectId;
+    String? correctId;
+    if (unique.isEmpty) {
+      correctId = null;
+    } else if (initialId != null && unique.any((s) => s.id == initialId)) {
+      correctId = initialId;
+    } else {
+      // FIX: if previous ID does NOT exist → reset to first subject
+      correctId = unique.first.id;
+    }
+
     setState(() {
-      _subjects = subjects;
-      if (widget.initial == null && subjects.isNotEmpty) {
-        _selectedSubjectId = subjects.first.id;
-      }
+      _subjects = unique;
+      _selectedSubjectId = correctId; // always valid now
+
+      _judulCtrl.text = widget.initial?.judul ?? "";
+      _kontenCtrl.text = widget.initial?.konten ?? "";
+      _jenis = widget.initial?.jenis ?? 'konseptual';
+      _kesulitan = (initialLevel != null && allowedLevels.contains(initialLevel))
+      ? initialLevel
+      : 'kelas10';
+      _videoUrl = widget.initial?.videoUrl;
+      _uploadedDocuments = widget.initial?.documents ?? [];
+
+      _subjectsLoaded = true;
       _loading = false;
     });
   }
@@ -275,6 +309,103 @@ class _AddEditMaterialScreenState extends State<AddEditMaterialScreen> {
     }
   }
 
+  Future<void> _pickDocument() async {
+    final permService = PermissionService();
+    final allowed = await permService.requestFilePermission();
+
+    if (!allowed) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Izin penyimpanan diperlukan untuk memilih dokumen."),
+          ),
+        );
+      }
+      return;
+    }
+
+    try {
+      final picked = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'doc', 'docx'],
+      );
+
+      if (picked != null && picked.files.isNotEmpty) {
+        setState(() {
+          _selectedDocument = File(picked.files.first.path!);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error memilih dokumen: $e")),
+        );
+      }
+    }
+  }
+
+  Future<void> _uploadSelectedDocument() async {
+    if (_selectedDocument == null) return;
+
+  final permService = PermissionService();
+  final allowed = await permService.requestFilePermission();
+
+  if (!allowed) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Izin penyimpanan diperlukan untuk mengunggah dokumen."),
+        ),
+      );
+    }
+    return;
+  }
+
+    setState(() => _uploadingDocument = true);
+
+    try {
+      final supabase = SupabaseService();
+      final fileName = _selectedDocument!.path.split('/').last;
+      final url = await supabase.uploadDocument(_selectedDocument!, widget.initial?.id ?? DateTime.now().millisecondsSinceEpoch.toString());
+
+      if (url != null) {
+        setState(() {
+          _uploadedDocuments.add({'name': fileName, 'url': url});
+          _selectedDocument = null;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Dokumen berhasil diunggah")),
+          );
+        }
+      } else {
+        throw Exception('Gagal mengunggah dokumen');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error: $e")),
+        );
+      }
+    } finally {
+      setState(() => _uploadingDocument = false);
+    }
+  }
+
+  Future<void> _removeDocument(int index) async {
+    final doc = _uploadedDocuments[index];
+    final supabase = SupabaseService();
+    
+    final success = await supabase.deleteDocument(doc['url']!);
+    
+    if (success) {
+      setState(() {
+        _uploadedDocuments.removeAt(index);
+      });
+    }
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -303,6 +434,10 @@ class _AddEditMaterialScreenState extends State<AddEditMaterialScreen> {
       });
     }
 
+    if (_selectedDocument != null) {
+    await _uploadSelectedDocument();
+    }
+
     final k = KnowledgeModel(
       id: id,
       subjectId: _selectedSubjectId!,
@@ -311,6 +446,7 @@ class _AddEditMaterialScreenState extends State<AddEditMaterialScreen> {
       judul: _judulCtrl.text.trim(),
       konten: _kontenCtrl.text.trim(),
       videoUrl: _videoUrl,
+      documents: _uploadedDocuments.isNotEmpty ? _uploadedDocuments : null,
     );
 
     try {
@@ -358,20 +494,26 @@ class _AddEditMaterialScreenState extends State<AddEditMaterialScreen> {
                     const SizedBox(height: 12),
 
                     DropdownButtonFormField<String>(
-                      value: _selectedSubjectId,
-                      items: _subjects
-                          .map(
-                            (s) => DropdownMenuItem(
-                              value: s.id,
-                              child: Text(s.nama),
-                            ),
-                          )
-                          .toList(),
+                      value: (_subjectsLoaded &&
+                              _selectedSubjectId != null &&
+                              _subjects.any((s) => s.id == _selectedSubjectId))
+                          ? _selectedSubjectId
+                          : null,
+                      items: _subjects.map(
+                        (s) => DropdownMenuItem(
+                          value: s.id,
+                          child: Text(s.nama),
+                        ),
+                      ).toList(),
                       onChanged: (v) => setState(() => _selectedSubjectId = v),
                       decoration: const InputDecoration(
                         labelText: "Mata Pelajaran",
                         border: OutlineInputBorder(),
                       ),
+                      validator: (v) =>
+                          v == null || v.isEmpty ? "Pilih mata pelajaran" : null,
+                      hint: const Text("Pilih mata pelajaran"),
+                      isExpanded: true,
                     ),
 
                     const SizedBox(height: 12),
@@ -396,14 +538,11 @@ class _AddEditMaterialScreenState extends State<AddEditMaterialScreen> {
                     const SizedBox(height: 12),
 
                     DropdownButtonFormField<String>(
-                      value: _kesulitan,
+                      value: allowedLevels.contains(_kesulitan) ? _kesulitan : 'kelas10',
                       items: const [
-                        DropdownMenuItem(
-                            value: 'kelas10', child: Text('Kelas 10')),
-                        DropdownMenuItem(
-                            value: 'kelas11', child: Text('Kelas 11')),
-                        DropdownMenuItem(
-                            value: 'kelas12', child: Text('Kelas 12')),
+                        DropdownMenuItem(value: 'kelas10', child: Text('Kelas 10')),
+                        DropdownMenuItem(value: 'kelas11', child: Text('Kelas 11')),
+                        DropdownMenuItem(value: 'kelas12', child: Text('Kelas 12')),
                       ],
                       onChanged: (v) => setState(() => _kesulitan = v!),
                       decoration: const InputDecoration(
@@ -441,23 +580,103 @@ class _AddEditMaterialScreenState extends State<AddEditMaterialScreen> {
                         ),
                       ),
 
-                    const SizedBox(height: 16),
+                    if (_videoUrl != null && _selectedVideo == null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          "Video sudah diunggah sebelumnya",
+                          style: const TextStyle(fontSize: 12, color: Colors.green),
+                        ),
+                      ),
 
                     if (_uploadingVideo)
-                      const Center(
-                        child: Column(
+                      const Padding(
+                        padding: EdgeInsets.only(top: 16),
+                        child: Center(
+                          child: Column(
+                            children: [
+                              CircularProgressIndicator(),
+                              SizedBox(height: 8),
+                              Text("Mengunggah video..."),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                    const SizedBox(height: 24),
+
+                    const Text(
+                      'Dokumen Materi (Opsional)',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    ElevatedButton(
+                      onPressed: _pickDocument,
+                      child: const Text("Pilih Dokumen (PDF, DOC, DOCX)"),
+                    ),
+
+                    if (_selectedDocument != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Row(
                           children: [
-                            CircularProgressIndicator(),
-                            SizedBox(height: 8),
-                            Text("Mengunggah video..."),
+                            Expanded(
+                              child: Text(
+                                "Dokumen dipilih: ${_selectedDocument!.path.split('/').last}",
+                                style: const TextStyle(fontSize: 12),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            ElevatedButton(
+                              onPressed: _uploadingDocument ? null : _uploadSelectedDocument,
+                              child: const Text("Unggah"),
+                            ),
                           ],
                         ),
                       ),
 
-                    const SizedBox(height: 16),
+                    if (_uploadingDocument)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 8),
+                        child: LinearProgressIndicator(),
+                      ),
+
+                    if (_uploadedDocuments.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Dokumen yang Diunggah:',
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 8),
+                            ..._uploadedDocuments.asMap().entries.map((e) {
+                              final index = e.key;
+                              final doc = e.value;
+                              
+                              return Card(
+                                child: ListTile(
+                                  leading: const Icon(Icons.description),
+                                  title: Text(doc['name']!),
+                                  trailing: IconButton(
+                                    icon: const Icon(Icons.delete, color: Colors.red),
+                                    onPressed: () => _removeDocument(index),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ],
+                        ),
+                      ),
+
+                    const SizedBox(height: 24),
 
                     ElevatedButton(
-                      onPressed: _uploadingVideo ? null : _save,
+                      onPressed: _uploadingVideo || _uploadingDocument ? null : _save,
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
@@ -468,5 +687,12 @@ class _AddEditMaterialScreenState extends State<AddEditMaterialScreen> {
               ),
             ),
     );
+  }
+
+  @override
+  void dispose() {
+    _judulCtrl.dispose();
+    _kontenCtrl.dispose();
+    super.dispose();
   }
 }

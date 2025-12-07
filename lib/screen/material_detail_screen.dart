@@ -3,6 +3,7 @@ import '../models/knowledge_model.dart';
 import '../services/firestore_services.dart';
 import '../models/rule_model.dart';
 import 'package:video_player/video_player.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class MaterialDetailScreen extends StatefulWidget {
   const MaterialDetailScreen({super.key});
@@ -30,6 +31,22 @@ class _MaterialDetailScreenState extends State<MaterialDetailScreen> {
     });
   }
 
+  Future<void> _downloadDocument(String url, String fileName) async {
+  try {
+    if (await canLaunchUrl(Uri.parse(url))) {
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Tidak dapat membuka dokumen")),
+      );
+    }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Error: $e")),
+    );
+  }
+}
+
   @override
   Widget build(BuildContext context) {
     final KnowledgeModel material =
@@ -55,6 +72,35 @@ class _MaterialDetailScreenState extends State<MaterialDetailScreen> {
                 height: 220,
                 margin: const EdgeInsets.only(bottom: 16),
                 child: VideoPlayerWidget(url: material.videoUrl!),
+              ),
+
+            const SizedBox(height: 16),
+
+            // Display documents if they exist
+            if (material.documents != null && material.documents!.isNotEmpty)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Dokumen Materi:',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  ...material.documents!.map((doc) {
+                    return Card(
+                      child: ListTile(
+                        leading: const Icon(Icons.description, color: Colors.blue),
+                        title: Text(doc['name'] ?? 'Dokumen'),
+                        trailing: const Icon(Icons.download),
+                        onTap: () => _downloadDocument(
+                          doc['url'] ?? '',
+                          doc['name'] ?? 'dokumen',
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                  const SizedBox(height: 16),
+                ],
               ),
 
             Text(material.konten),
@@ -106,29 +152,109 @@ class VideoPlayerWidget extends StatefulWidget {
 
 class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
   late VideoPlayerController _controller;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
+    _initializeVideo();
+  }
 
-    _controller = VideoPlayerController.networkUrl(Uri.parse(widget.url));
-    _controller.initialize().then((_) {
+  Future<void> _initializeVideo() async {
+    try {
+      _controller = VideoPlayerController.networkUrl(Uri.parse(widget.url));
+      await _controller.initialize();
+      
       if (mounted) {
         setState(() {});
         _controller.play();
       }
-    });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Gagal memuat video: $e';
+        });
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_errorMessage != null) {
+      return Container(
+        color: Colors.grey[300],
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 48, color: Colors.red),
+              const SizedBox(height: 8),
+              Text(
+                _errorMessage!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.red),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     if (!_controller.value.isInitialized) {
-      return const Center(child: CircularProgressIndicator());
+      return Container(
+        color: Colors.grey[300],
+        child: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
     }
 
     return AspectRatio(
       aspectRatio: _controller.value.aspectRatio,
-      child: VideoPlayer(_controller),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          VideoPlayer(_controller),
+          // Play/Pause overlay button
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _controller.value.isPlaying
+                    ? _controller.pause()
+                    : _controller.play();
+              });
+            },
+            child: _controller.value.isPlaying
+                ? Container()
+                : Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black45,
+                      shape: BoxShape.circle,
+                    ),
+                    padding: const EdgeInsets.all(16),
+                    child: const Icon(
+                      Icons.play_arrow,
+                      color: Colors.white,
+                      size: 48,
+                    ),
+                  ),
+          ),
+          // Progress indicator
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: VideoProgressIndicator(
+              _controller,
+              allowScrubbing: true,
+              colors: const VideoProgressColors(
+                playedColor: Colors.blue,
+                bufferedColor: Colors.grey,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
