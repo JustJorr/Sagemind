@@ -1,10 +1,11 @@
 class KnowledgeModel {
   final String id;
-  final String subjectId; 
+  final String subjectId;
   final String judul;
   final String konten;
-  final String jenis; 
-  final String kesulitan; 
+  final String jenis;
+  final String kesulitan;
+  final String? videoUrl; // NEW
 
   KnowledgeModel({
     required this.id,
@@ -13,6 +14,7 @@ class KnowledgeModel {
     required this.konten,
     required this.jenis,
     required this.kesulitan,
+    this.videoUrl, // NEW
   });
 
   factory KnowledgeModel.fromMap(String id, Map<String, dynamic> map) {
@@ -23,6 +25,7 @@ class KnowledgeModel {
       konten: map['konten'] ?? '',
       jenis: map['jenis'] ?? 'konseptual',
       kesulitan: map['kesulitan'] ?? 'kelas10',
+      videoUrl: map['video_url'], // NEW
     );
   }
 
@@ -33,6 +36,7 @@ class KnowledgeModel {
       'konten': konten,
       'jenis': jenis,
       'kesulitan': kesulitan,
+      'video_url': videoUrl, // NEW
     };
   }
 }

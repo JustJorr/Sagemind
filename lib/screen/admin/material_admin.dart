@@ -1,7 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../models/knowledge_model.dart';
 import '../../models/subject_model.dart';
 import '../../services/firestore_services.dart';
+import '../../services/supabase_services.dart';
+import '../../services/permission_service.dart'; 
 
 class AdminMaterialScreen extends StatefulWidget {
   const AdminMaterialScreen({super.key});
@@ -180,9 +184,7 @@ class _AdminMaterialScreenState extends State<AdminMaterialScreen> {
   }
 }
 
-// -------------------------------------------------------------
-//                ADD / EDIT MATERIAL SCREEN
-// -------------------------------------------------------------
+//ADD / EDIT MATERIAL SCREEN
 
 class AddEditMaterialScreen extends StatefulWidget {
   final KnowledgeModel? initial;
@@ -205,6 +207,11 @@ class _AddEditMaterialScreenState extends State<AddEditMaterialScreen> {
   List<SubjectModel> _subjects = [];
   String? _selectedSubjectId;
 
+  // --- VIDEO UPLOAD FIELDS ---
+  File? _selectedVideo;
+  String? _videoUrl;
+  bool _uploadingVideo = false;
+
   bool _loading = true;
 
   @override
@@ -216,6 +223,7 @@ class _AddEditMaterialScreenState extends State<AddEditMaterialScreen> {
       _jenis = widget.initial!.jenis;
       _kesulitan = widget.initial!.kesulitan;
       _selectedSubjectId = widget.initial!.subjectId;
+      _videoUrl = widget.initial!.videoUrl;
     }
     _loadSubjects();
   }
@@ -231,8 +239,45 @@ class _AddEditMaterialScreenState extends State<AddEditMaterialScreen> {
     });
   }
 
+  Future<void> _pickVideo() async {
+    final permService = PermissionService();
+    final allowed = await permService.requestVideoPermission();
+
+    if (!allowed) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Izin penyimpanan diperlukan untuk memilih video."),
+          ),
+        );
+      }
+      return;
+    }
+
+    try {
+      final picked = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['mp4'],
+        lockParentWindow: true,
+      );
+
+      if (picked != null && picked.files.isNotEmpty) {
+        setState(() {
+          _selectedVideo = File(picked.files.first.path!);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error memilih video: $e")),
+        );
+      }
+    }
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+
     if (_selectedSubjectId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Harap pilih mata pelajaran.")),
@@ -245,6 +290,19 @@ class _AddEditMaterialScreenState extends State<AddEditMaterialScreen> {
     final id = widget.initial?.id ??
         DateTime.now().millisecondsSinceEpoch.toString();
 
+    // Upload video if selected
+    if (_selectedVideo != null) {
+      setState(() => _uploadingVideo = true);
+
+      final supabase = SupabaseService();
+      final url = await supabase.uploadVideo(_selectedVideo!, id);
+
+      setState(() {
+        _videoUrl = url;
+        _uploadingVideo = false;
+      });
+    }
+
     final k = KnowledgeModel(
       id: id,
       subjectId: _selectedSubjectId!,
@@ -252,6 +310,7 @@ class _AddEditMaterialScreenState extends State<AddEditMaterialScreen> {
       kesulitan: _kesulitan,
       judul: _judulCtrl.text.trim(),
       konten: _kontenCtrl.text.trim(),
+      videoUrl: _videoUrl,
     );
 
     try {
@@ -260,6 +319,7 @@ class _AddEditMaterialScreenState extends State<AddEditMaterialScreen> {
       } else {
         await _fs.updateKnowledge(k);
       }
+
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {
@@ -300,10 +360,12 @@ class _AddEditMaterialScreenState extends State<AddEditMaterialScreen> {
                     DropdownButtonFormField<String>(
                       value: _selectedSubjectId,
                       items: _subjects
-                          .map((s) => DropdownMenuItem(
-                                value: s.id,
-                                child: Text(s.nama),
-                              ))
+                          .map(
+                            (s) => DropdownMenuItem(
+                              value: s.id,
+                              child: Text(s.nama),
+                            ),
+                          )
                           .toList(),
                       onChanged: (v) => setState(() => _selectedSubjectId = v),
                       decoration: const InputDecoration(
@@ -336,9 +398,12 @@ class _AddEditMaterialScreenState extends State<AddEditMaterialScreen> {
                     DropdownButtonFormField<String>(
                       value: _kesulitan,
                       items: const [
-                        DropdownMenuItem(value: 'kelas10', child: Text('Kelas 10')),
-                        DropdownMenuItem(value: 'kelas11', child: Text('Kelas 11')),
-                        DropdownMenuItem(value: 'kelas12', child: Text('Kelas 12')),
+                        DropdownMenuItem(
+                            value: 'kelas10', child: Text('Kelas 10')),
+                        DropdownMenuItem(
+                            value: 'kelas11', child: Text('Kelas 11')),
+                        DropdownMenuItem(
+                            value: 'kelas12', child: Text('Kelas 12')),
                       ],
                       onChanged: (v) => setState(() => _kesulitan = v!),
                       decoration: const InputDecoration(
@@ -361,9 +426,38 @@ class _AddEditMaterialScreenState extends State<AddEditMaterialScreen> {
                     ),
 
                     const SizedBox(height: 16),
+                    
+                    ElevatedButton(
+                      onPressed: _pickVideo,
+                      child: const Text("Pilih Video (MP4)"),
+                    ),
+
+                    if (_selectedVideo != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          "Video dipilih: ${_selectedVideo!.path.split('/').last}",
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+
+                    const SizedBox(height: 16),
+
+                    if (_uploadingVideo)
+                      const Center(
+                        child: Column(
+                          children: [
+                            CircularProgressIndicator(),
+                            SizedBox(height: 8),
+                            Text("Mengunggah video..."),
+                          ],
+                        ),
+                      ),
+
+                    const SizedBox(height: 16),
 
                     ElevatedButton(
-                      onPressed: _save,
+                      onPressed: _uploadingVideo ? null : _save,
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),

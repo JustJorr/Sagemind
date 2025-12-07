@@ -35,7 +35,7 @@ class SageMindApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
 
-      // 🔥 Auth check now runs ONCE only
+      // Auth check
       home: FutureBuilder<UserModel?>(
         future: AuthService().getUserFromPrefs(),
         builder: (context, snapshot) {
@@ -63,13 +63,14 @@ class SageMindApp extends StatelessWidget {
       ),
 
       routes: {
+        "/user": (_) => const MainUserShell(),
         "/login": (_) => const LoginScreen(),
         "/register": (_) => const RegisterScreen(),
         "/recommendation": (_) => const RecommendationScreen(),
         "/recommendation/full": (_) => const RecommendationFullScreen(),
         "/specific_choices": (_) => const SpecificChoicesScreen(),
         "/materials": (_) => const MaterialsScreen(),
-        "/material/detail": (_) => const MaterialDetailScreen(),
+        "/material_detail": (_) => const MaterialDetailScreen(),
 
         // Admin Routes
         "/admin": (_) => const AdminDashboardScreen(),

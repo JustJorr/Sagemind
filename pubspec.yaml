@@ -1,7 +1,7 @@
-name: sagemind
-description: "A new Flutter project."
+name: Sagemind
+description: "An Expert Education System For High Schoolers."
 publish_to: 'none'
-version: 0.1.0
+version: 0.5.0
 
 environment:
   sdk: ^3.8.1
@@ -11,6 +11,12 @@ dependencies:
     sdk: flutter
   firebase_auth: ^6.1.0
   shared_preferences: ^2.2.2
+  supabase: ^2.10.0
+  file_picker: ^10.3.7
+  video_player: ^2.10.1
+  supabase_flutter: ^2.10.3
+  permission_handler: ^11.3.0
+  device_info_plus: ^12.3.0
 
 dev_dependencies:
   flutter_test:

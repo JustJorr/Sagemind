@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../models/user_model.dart';
 import '../core/theme/colors.dart';
-import 'home_screen.dart';
-import 'admin/admin_dashboard_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -105,13 +103,7 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() => _isLoading = false);
 
       if (user != null) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) =>
-                user.role == "admin" ? const AdminDashboardScreen() : HomeScreen(),
-          ),
-        );
+        Navigator.pushReplacementNamed(context, "/");
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Login failed")),

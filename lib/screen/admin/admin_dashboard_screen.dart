@@ -20,7 +20,10 @@ class AdminDashboardScreen extends StatelessWidget {
             ),
             TextButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text("Logout", style: TextStyle(color: Colors.red)),
+              child: const Text(
+                "Logout",
+                style: TextStyle(color: Colors.red),
+              ),
             ),
           ],
         );
@@ -29,8 +32,12 @@ class AdminDashboardScreen extends StatelessWidget {
 
     if (confirm == true) {
       await auth.logout();
+
       if (context.mounted) {
-        Navigator.pushReplacementNamed(context, '/login');
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          '/login',
+          (_) => false,
+        );
       }
     }
   }
@@ -46,16 +53,21 @@ class AdminDashboardScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // --- Admin Header Card ---
+            // --- Admin Info Card ---
             Card(
               color: Colors.blue.shade50,
               child: ListTile(
-                leading: const Icon(Icons.admin_panel_settings, size: 40, color: Colors.blue),
+                leading: const Icon(
+                  Icons.admin_panel_settings,
+                  size: 40,
+                  color: Colors.blue,
+                ),
                 title: const Text(
                   "Administrator Panel",
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                subtitle: const Text("Manage subjects, materials, rules, and users"),
+                subtitle:
+                    const Text("Manage subjects, materials, rules, and users"),
               ),
             ),
 
@@ -92,13 +104,30 @@ class AdminDashboardScreen extends StatelessWidget {
                     icon: Icons.people,
                     route: "/admin/users",
                   ),
+                  const SizedBox(height: 12),
+
+                  // --- Switch to User View (NEW BUTTON) ---
+                  Card(
+                    elevation: 2,
+                    child: ListTile(
+                      leading: const Icon(Icons.switch_account, size: 32),
+                      title: const Text(
+                        "Switch to User View",
+                        style: TextStyle(fontSize: 18),
+                      ),
+                      trailing: const Icon(Icons.arrow_forward_ios),
+                      onTap: () {
+                        Navigator.pushReplacementNamed(context, "/user");
+                      },
+                    ),
+                  ),
                 ],
               ),
             ),
 
             const SizedBox(height: 20),
 
-            // --- Logout Button (Bottom) ---
+            // --- Logout Button ---
             ElevatedButton(
               onPressed: () => _logout(context),
               style: ElevatedButton.styleFrom(
@@ -124,7 +153,10 @@ class AdminDashboardScreen extends StatelessWidget {
       elevation: 2,
       child: ListTile(
         leading: Icon(icon, size: 32),
-        title: Text(title, style: const TextStyle(fontSize: 18)),
+        title: Text(
+          title,
+          style: const TextStyle(fontSize: 18),
+        ),
         trailing: const Icon(Icons.arrow_forward_ios),
         onTap: () => Navigator.pushNamed(context, route),
       ),
