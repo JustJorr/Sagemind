@@ -3,9 +3,13 @@ import '../models/subject_model.dart';
 import '../models/knowledge_model.dart';
 import '../models/rule_model.dart';
 import '../models/user_model.dart';
+import '../models/conversation_model.dart';
+import '../models/message_model.dart';
 
 class FirestoreServices {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+
+  // ==================== SUBJECTS ====================
   Stream<List<SubjectModel>> streamSubjects() {
     return _db.collection('subjects').snapshots().map(
       (snap) => snap.docs.map((d) {
@@ -25,7 +29,6 @@ class FirestoreServices {
 
   Future<List<SubjectModel>> getAllSubjects() => getSubjectsOnce();
 
-  /// CREATE subject
   Future<void> createSubject(String name) async {
     final id = DateTime.now().millisecondsSinceEpoch.toString();
     await _db.collection('subjects').doc(id).set({
@@ -33,18 +36,17 @@ class FirestoreServices {
     });
   }
 
-  /// UPDATE subject
   Future<void> updateSubject(String id, String name) async {
     await _db.collection('subjects').doc(id).update({
       'nama': name,
     });
   }
 
-  /// DELETE subject
   Future<void> deleteSubject(String id) async {
     await _db.collection('subjects').doc(id).delete();
   }
 
+  // ==================== KNOWLEDGE ====================
   Future<List<KnowledgeModel>> getKnowledgeBySubject(String subjectId) async {
     final snap = await _db
         .collection('knowledge')
@@ -81,21 +83,19 @@ class FirestoreServices {
     return KnowledgeModel.fromMap(doc.id, data);
   }
 
-  /// CREATE material
   Future<void> createKnowledge(KnowledgeModel k) async {
     await _db.collection('knowledge').doc(k.id).set(k.toMap());
   }
 
-  /// UPDATE material
   Future<void> updateKnowledge(KnowledgeModel k) async {
     await _db.collection('knowledge').doc(k.id).update(k.toMap());
   }
 
-  /// DELETE material
   Future<void> deleteKnowledge(String id) async {
     await _db.collection('knowledge').doc(id).delete();
   }
 
+  // ==================== RULES ====================
   Future<List<RuleModel>> getRulesBySubject(String subjectId) async {
     final snap = await _db
         .collection('rules')
@@ -117,17 +117,14 @@ class FirestoreServices {
     }).toList();
   }
 
-  /// CREATE rule
   Future<void> createRule(RuleModel r) async {
     await _db.collection('rules').doc(r.id).set(r.toMap());
   }
 
-  /// UPDATE rule
   Future<void> updateRule(RuleModel r) async {
     await _db.collection('rules').doc(r.id).update(r.toMap());
   }
 
-  /// DELETE rule
   Future<void> deleteRule(String id) async {
     await _db.collection('rules').doc(id).delete();
   }
@@ -151,7 +148,6 @@ class FirestoreServices {
       return RuleModel.fromMap(snapExact.docs.first.id, data);
     }
 
-    // fallback fuzzy search
     final all = await getAllRules();
 
     for (var r in all) {
@@ -180,7 +176,7 @@ class FirestoreServices {
         .toList();
   }
 
-  // User methods
+  // ==================== USERS ====================
   Future<void> createUser(UserModel user) async {
     await _db.collection('users').doc(user.id).set(user.toMap());
   }
@@ -222,7 +218,122 @@ class FirestoreServices {
     }).toList();
   }
 
+  Future<List<UserModel>> getAllAdmins() async {
+    final snap = await _db.collection('users').where('role', isEqualTo: 'admin').get();
+    return snap.docs.map((d) {
+      final Map<String, dynamic> data = d.data();
+      return UserModel.fromMap(d.id, data);
+    }).toList();
+  }
+
   Future<void> updateUserRole(String id, String newRole) async {
     await _db.collection('users').doc(id).update({'role': newRole});
+  }
+
+  // ==================== CONVERSATIONS ====================
+  Future<ConversationModel?> getOrCreateConversation(
+    String userId,
+    String adminId,
+    String userName,
+    String adminName,
+  ) async {
+    final snap = await _db
+        .collection('conversations')
+        .where('user_id', isEqualTo: userId)
+        .where('admin_id', isEqualTo: adminId)
+        .limit(1)
+        .get();
+
+    if (snap.docs.isNotEmpty) {
+      final data = snap.docs.first.data();
+      return ConversationModel.fromMap(snap.docs.first.id, data);
+    }
+
+    final id = '${userId}_${adminId}_${DateTime.now().millisecondsSinceEpoch}';
+    final conversation = ConversationModel(
+      id: id,
+      userId: userId,
+      adminId: adminId,
+      userName: userName,
+      adminName: adminName,
+      lastMessage: '',
+      lastMessageTime: DateTime.now(),
+      unreadCount: 0,
+    );
+
+    await _db.collection('conversations').doc(id).set(conversation.toMap());
+    return conversation;
+  }
+
+  Stream<List<ConversationModel>> streamUserConversations(String userId) {
+    return _db
+        .collection('conversations')
+        .where('user_id', isEqualTo: userId)
+        .orderBy('last_message_time', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs.map((d) {
+              final Map<String, dynamic> data = d.data();
+              return ConversationModel.fromMap(d.id, data);
+            }).toList());
+  }
+
+  Stream<List<ConversationModel>> streamAdminConversations(String adminId) {
+    return _db
+        .collection('conversations')
+        .where('admin_id', isEqualTo: adminId)
+        .orderBy('last_message_time', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs.map((d) {
+              final Map<String, dynamic> data = d.data();
+              return ConversationModel.fromMap(d.id, data);
+            }).toList());
+  }
+
+  // ==================== MESSAGES ====================
+  Future<void> sendMessage(MessageModel message) async {
+    final messageId = DateTime.now().millisecondsSinceEpoch.toString();
+    
+    await _db
+        .collection('conversations')
+        .doc(message.conversationId)
+        .collection('messages')
+        .doc(messageId)
+        .set(message.toMap());
+
+    await _db.collection('conversations').doc(message.conversationId).update({
+      'last_message': message.message,
+      'last_message_time': message.timestamp,
+    });
+  }
+
+  Stream<List<MessageModel>> streamMessages(String conversationId) {
+    return _db
+        .collection('conversations')
+        .doc(conversationId)
+        .collection('messages')
+        .orderBy('timestamp', descending: false)
+        .snapshots()
+        .map((snap) => snap.docs.map((d) {
+              final Map<String, dynamic> data = d.data();
+              return MessageModel.fromMap(d.id, data);
+            }).toList());
+  }
+
+  Future<void> markMessagesAsRead(String conversationId, String userId) async {
+    final snap = await _db
+        .collection('conversations')
+        .doc(conversationId)
+        .collection('messages')
+        .where('sender_id', isNotEqualTo: userId)
+        .where('is_read', isEqualTo: false)
+        .get();
+
+    for (var doc in snap.docs) {
+      await doc.reference.update({'is_read': true});
+    }
+
+    await _db.collection('conversations').doc(conversationId).update({
+      'unread_count': 0,
+    });
   }
 }

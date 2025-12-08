@@ -26,8 +26,10 @@ class AuthService {
         await _saveUserToPrefs(userModel);
         return userModel;
       }
+    } on FirebaseAuthException catch (e) {
+      print("Register error: ${e.code} - ${e.message}");
     } catch (e) {
-      print(e.toString());
+      print("Register error: $e");
     }
     return null;
   }
@@ -36,24 +38,25 @@ class AuthService {
   Future<UserModel?> login(String identifier, String password) async {
     try {
       UserCredential result;
+      String email = identifier;
+
       // Check if identifier is email or username
-      if (identifier.contains('@')) {
-        // Login with email
-        result = await _auth.signInWithEmailAndPassword(
-          email: identifier,
-          password: password,
-        );
-      } else {
+      if (!identifier.contains('@')) {
         // Login with username - first get user by username
         UserModel? userModel = await _firestore.getUserByUsername(identifier);
         if (userModel == null) {
-          throw Exception('User not found');
+          print("User not found with username: $identifier");
+          return null;
         }
-        result = await _auth.signInWithEmailAndPassword(
-          email: userModel.email,
-          password: password,
-        );
+        email = userModel.email;
       }
+
+      // Login with email
+      result = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
       User? user = result.user;
       if (user != null) {
         UserModel? userModel = await _firestore.getUserById(user.uid);
@@ -62,16 +65,22 @@ class AuthService {
           return userModel;
         }
       }
+    } on FirebaseAuthException catch (e) {
+      print("Login error: ${e.code} - ${e.message}");
     } catch (e) {
-      print(e.toString());
+      print("Login error: $e");
     }
     return null;
   }
 
   // Logout
   Future<void> logout() async {
-    await _auth.signOut();
-    await _clearUserFromPrefs();
+    try {
+      await _auth.signOut();
+      await _clearUserFromPrefs();
+    } catch (e) {
+      print("Logout error: $e");
+    }
   }
 
   // Get current user
@@ -91,32 +100,44 @@ class AuthService {
 
   // Save user to shared preferences
   Future<void> _saveUserToPrefs(UserModel user) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setString('user_id', user.id);
-    await prefs.setString('user_email', user.email);
-    await prefs.setString('user_username', user.username);
-    await prefs.setString('user_role', user.role);
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user_id', user.id);
+      await prefs.setString('user_email', user.email);
+      await prefs.setString('user_username', user.username);
+      await prefs.setString('user_role', user.role);
+    } catch (e) {
+      print("Error saving user to prefs: $e");
+    }
   }
 
   // Get user from shared preferences
   Future<UserModel?> getUserFromPrefs() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? id = prefs.getString('user_id');
-    String? email = prefs.getString('user_email');
-    String? username = prefs.getString('user_username');
-    String? role = prefs.getString('user_role');
-    if (id != null && email != null && username != null && role != null) {
-      return UserModel(id: id, email: email, username: username, role: role);
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? id = prefs.getString('user_id');
+      String? email = prefs.getString('user_email');
+      String? username = prefs.getString('user_username');
+      String? role = prefs.getString('user_role');
+      if (id != null && email != null && username != null && role != null) {
+        return UserModel(id: id, email: email, username: username, role: role);
+      }
+    } catch (e) {
+      print("Error getting user from prefs: $e");
     }
     return null;
   }
 
   // Clear user from shared preferences
   Future<void> _clearUserFromPrefs() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.remove('user_id');
-    await prefs.remove('user_email');
-    await prefs.remove('user_username');
-    await prefs.remove('user_role');
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.remove('user_id');
+      await prefs.remove('user_email');
+      await prefs.remove('user_username');
+      await prefs.remove('user_role');
+    } catch (e) {
+      print("Error clearing user from prefs: $e");
+    }
   }
 }

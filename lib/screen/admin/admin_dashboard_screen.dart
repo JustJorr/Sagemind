@@ -34,10 +34,7 @@ class AdminDashboardScreen extends StatelessWidget {
       await auth.logout();
 
       if (context.mounted) {
-        Navigator.of(context).pushNamedAndRemoveUntil(
-          '/login',
-          (_) => false,
-        );
+      Navigator.pushReplacementNamed(context, "/login");
       }
     }
   }
@@ -67,7 +64,7 @@ class AdminDashboardScreen extends StatelessWidget {
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 subtitle:
-                    const Text("Manage subjects, materials, rules, and users"),
+                    const Text("Manage subjects, materials, rules"),
               ),
             ),
 
@@ -97,14 +94,6 @@ class AdminDashboardScreen extends StatelessWidget {
                     icon: Icons.rule_folder,
                     route: "/admin/rules",
                   ),
-                  const SizedBox(height: 12),
-                  _menuCard(
-                    context,
-                    title: "Manage Users",
-                    icon: Icons.people,
-                    route: "/admin/users",
-                  ),
-                  const SizedBox(height: 12),
 
                   // --- Switch to User View (NEW BUTTON) ---
                   Card(

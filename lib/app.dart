@@ -12,6 +12,7 @@ import 'screen/register_screen.dart';
 import 'screen/home_screen.dart';
 import 'screen/profile_screen.dart';
 import 'screen/search_screen.dart';
+import 'dialogs/chat_screen.dart';
 import 'screen/recommendation_screen.dart';
 import 'screen/recommendation_full_screen.dart';
 import 'screen/specific_choices_screen.dart';
@@ -35,32 +36,85 @@ class SageMindApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
 
-      // Auth check
-      home: FutureBuilder<UserModel?>(
-        future: AuthService().getUserFromPrefs(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            );
-          }
+      initialRoute: "/",
+      
+      onGenerateRoute: (settings) {
+        if (settings.name == "/") {
+          return MaterialPageRoute(
+            builder: (context) {
+              return FutureBuilder<UserModel?>(
+                future: AuthService().getUserFromPrefs(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Scaffold(
+                      body: Center(child: CircularProgressIndicator()),
+                    );
+                  }
 
-          // Not logged in → Login page
-          if (!snapshot.hasData || snapshot.data == null) {
-            return const LoginScreen();
-          }
+                  if (!snapshot.hasData || snapshot.data == null) {
+                    return const LoginScreen();
+                  }
 
-          final user = snapshot.data!;
+                  final user = snapshot.data!;
 
-          // Admin redirects to dashboard
-          if (user.role == "admin") {
-            return const AdminDashboardScreen();
-          }
+                  if (user.role == "admin") {
+                    return const AdminDashboardScreen();
+                  }
 
-          // User → Main app shell with navigation bar
-          return const MainUserShell();
-        },
-      ),
+                  return const MainUserShell();
+                },
+              );
+            },
+          );
+        }
+
+        Widget screen;
+        switch (settings.name) {
+          case "/user":
+            screen = const MainUserShell();
+            break;
+          case "/login":
+            screen = const LoginScreen();
+            break;
+          case "/register":
+            screen = const RegisterScreen();
+            break;
+          case "/recommendation":
+            screen = const RecommendationScreen();
+            break;
+          case "/recommendation/full":
+            screen = const RecommendationFullScreen();
+            break;
+          case "/specific_choices":
+            screen = const SpecificChoicesScreen();
+            break;
+          case "/materials":
+            screen = const MaterialsScreen();
+            break;
+          case "/material_detail":
+            screen = const MaterialDetailScreen();
+            break;
+          case "/admin":
+            screen = const AdminDashboardScreen();
+            break;
+          case "/admin/subjects":
+            screen = const AdminSubjectScreen();
+            break;
+          case "/admin/materials":
+            screen = const AdminMaterialScreen();
+            break;
+          case "/admin/rules":
+            screen = const AdminRuleScreen();
+            break;
+          case "/admin/users":
+            screen = const AdminUserScreen();
+            break;
+          default:
+            screen = const LoginScreen();
+        }
+
+        return MaterialPageRoute(builder: (context) => screen);
+      },
 
       routes: {
         "/user": (_) => const MainUserShell(),
@@ -93,17 +147,17 @@ class MainUserShell extends StatefulWidget {
 class _MainUserShellState extends State<MainUserShell> {
   int _index = 0;
 
-  // ⚡ No rebuild of entire MaterialApp
   final List<Widget> _pages = [
-    HomeScreen(),
+    const HomeScreen(),
     const SearchScreen(),
+    const ChatScreen(),
     const ProfileScreen(),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack( // keeps state, smooth & fast
+      body: IndexedStack(
         index: _index,
         children: _pages,
       ),
@@ -116,6 +170,7 @@ class _MainUserShellState extends State<MainUserShell> {
         unselectedItemColor: SMColors.black,
         showSelectedLabels: true,
         showUnselectedLabels: false,
+        type: BottomNavigationBarType.fixed,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home),
@@ -124,6 +179,10 @@ class _MainUserShellState extends State<MainUserShell> {
           BottomNavigationBarItem(
             icon: Icon(Icons.search),
             label: "Cari",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.chat),
+            label: "Konsultasi",
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person),
