@@ -13,7 +13,6 @@ import 'screen/home_screen.dart';
 import 'screen/profile_screen.dart';
 import 'screen/search_screen.dart';
 import 'dialogs/chat_screen.dart';
-import 'screen/recommendation_screen.dart';
 import 'screen/recommendation_full_screen.dart';
 import 'screen/specific_choices_screen.dart';
 import 'screen/materials_screen.dart';

@@ -41,7 +41,7 @@ class KnowledgeModel {
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'subjectId': subjectId,
+      'subject_id': subjectId,  // ← Changed to snake_case to match Firestore query
       'judul': judul,
       'konten': konten,
       'jenis': jenis,

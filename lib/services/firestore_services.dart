@@ -47,6 +47,14 @@ class FirestoreServices {
   }
 
   // ==================== KNOWLEDGE ====================
+  Future<List<KnowledgeModel>> getAllKnowledge() async {
+    final snap = await _db.collection('knowledge').get();
+    return snap.docs.map((d) {
+      final Map<String, dynamic> data = d.data();
+      return KnowledgeModel.fromMap(d.id, data);
+    }).toList();
+  }
+
   Future<List<KnowledgeModel>> getKnowledgeBySubject(String subjectId) async {
     final snap = await _db
         .collection('knowledge')

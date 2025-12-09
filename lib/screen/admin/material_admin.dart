@@ -5,7 +5,7 @@ import '../../models/knowledge_model.dart';
 import '../../models/subject_model.dart';
 import '../../services/firestore_services.dart';
 import '../../services/supabase_services.dart';
-import '../../services/permission_service.dart'; 
+import '../../services/permission_service.dart';
 
 class AdminMaterialScreen extends StatefulWidget {
   const AdminMaterialScreen({super.key});
@@ -67,7 +67,11 @@ class _AdminMaterialScreenState extends State<AdminMaterialScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Kelola Materi")),
+      appBar: AppBar(
+        title: const Text("Kelola Materi"),
+        centerTitle: true,
+        elevation: 0,
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           await Navigator.push(
@@ -83,7 +87,7 @@ class _AdminMaterialScreenState extends State<AdminMaterialScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
                   DropdownButtonFormField<SubjectModel>(
@@ -102,38 +106,95 @@ class _AdminMaterialScreenState extends State<AdminMaterialScreen> {
                       });
                       if (v != null) _loadMaterials(v.id);
                     },
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Filter berdasarkan Mata Pelajaran',
-                      border: OutlineInputBorder(),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
                     ),
                   ),
-
-                  const SizedBox(height: 12),
-
+                  const SizedBox(height: 16),
                   Expanded(
                     child: _materials.isEmpty
-                        ? const Center(child: Text('Belum ada materi.'))
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.inbox_outlined,
+                                  size: 48,
+                                  color: Colors.grey[400],
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'Belum ada materi.',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
                         : ListView.builder(
                             itemCount: _materials.length,
                             itemBuilder: (_, i) {
                               final m = _materials[i];
 
                               return Card(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                elevation: 1,
                                 child: ListTile(
-                                  title: Text(m.judul),
-                                  subtitle: Text(
-                                      '${m.jenis} • Kesulitan: ${m.kesulitan}'),
-                                  onTap: () => Navigator.pushNamed(
-                                    context,
-                                    '/material/detail',
-                                    arguments: m,
+                                  leading: Container(
+                                    width: 48,
+                                    height: 48,
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(
+                                      Icons.description_outlined,
+                                      color: Colors.blue,
+                                    ),
                                   ),
-                                  trailing: Row(
-                                    mainAxisSize: MainAxisSize.min,
+                                  title: Text(
+                                    m.judul,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  subtitle: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      IconButton(
-                                        icon: const Icon(Icons.edit),
-                                        onPressed: () async {
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          Chip(
+                                            label: Text(m.jenis),
+                                            visualDensity:
+                                                VisualDensity.compact,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Chip(
+                                            label: Text(m.kesulitan),
+                                            visualDensity:
+                                                VisualDensity.compact,
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                  trailing: PopupMenuButton(
+                                    itemBuilder: (context) => [
+                                      PopupMenuItem(
+                                        child: const Text("Edit"),
+                                        onTap: () async {
                                           await Navigator.push(
                                             context,
                                             MaterialPageRoute(
@@ -148,15 +209,16 @@ class _AdminMaterialScreenState extends State<AdminMaterialScreen> {
                                           }
                                         },
                                       ),
-                                      IconButton(
-                                        icon: const Icon(Icons.delete,
-                                            color: Colors.red),
-                                        onPressed: () async {
+                                      PopupMenuItem(
+                                        child: const Text(
+                                          "Hapus",
+                                          style: TextStyle(color: Colors.red),
+                                        ),
+                                        onTap: () async {
                                           final ok = await showDialog<bool>(
                                             context: context,
                                             builder: (_) => AlertDialog(
-                                              title:
-                                                  const Text('Hapus Materi?'),
+                                              title: const Text('Hapus Materi?'),
                                               content: const Text(
                                                   'Yakin ingin menghapus materi ini?'),
                                               actions: [
@@ -208,6 +270,7 @@ class _AddEditMaterialScreenState extends State<AddEditMaterialScreen> {
   final allowedLevels = ['kelas10', 'kelas11', 'kelas12'];
   final _formKey = GlobalKey<FormState>();
   final FirestoreServices _fs = FirestoreServices();
+  final SupabaseService _supabase = SupabaseService();
 
   final TextEditingController _judulCtrl = TextEditingController();
   final TextEditingController _kontenCtrl = TextEditingController();
@@ -223,6 +286,7 @@ class _AddEditMaterialScreenState extends State<AddEditMaterialScreen> {
   File? _selectedVideo;
   String? _videoUrl;
   bool _uploadingVideo = false;
+  
   File? _selectedDocument;
   List<Map<String, String>> _uploadedDocuments = [];
   bool _uploadingDocument = false;
@@ -238,11 +302,9 @@ class _AddEditMaterialScreenState extends State<AddEditMaterialScreen> {
   Future<void> _loadSubjects() async {
     final subjects = await _fs.getSubjectsOnce();
 
-    // Remove duplicates
     final Map<String, SubjectModel> map = {};
     for (var s in subjects) map[s.id] = s;
     final unique = map.values.toList();
-    final initialLevel = widget.initial?.kesulitan;
 
     String? initialId = widget.initial?.subjectId;
     String? correctId;
@@ -251,20 +313,20 @@ class _AddEditMaterialScreenState extends State<AddEditMaterialScreen> {
     } else if (initialId != null && unique.any((s) => s.id == initialId)) {
       correctId = initialId;
     } else {
-      // FIX: if previous ID does NOT exist → reset to first subject
       correctId = unique.first.id;
     }
 
     setState(() {
       _subjects = unique;
-      _selectedSubjectId = correctId; // always valid now
+      _selectedSubjectId = correctId;
 
       _judulCtrl.text = widget.initial?.judul ?? "";
       _kontenCtrl.text = widget.initial?.konten ?? "";
       _jenis = widget.initial?.jenis ?? 'konseptual';
+      final initialLevel = widget.initial?.kesulitan;
       _kesulitan = (initialLevel != null && allowedLevels.contains(initialLevel))
-      ? initialLevel
-      : 'kelas10';
+          ? initialLevel
+          : 'kelas10';
       _videoUrl = widget.initial?.videoUrl;
       _uploadedDocuments = widget.initial?.documents ?? [];
 
@@ -278,13 +340,7 @@ class _AddEditMaterialScreenState extends State<AddEditMaterialScreen> {
     final allowed = await permService.requestVideoPermission();
 
     if (!allowed) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Izin penyimpanan diperlukan untuk memilih video."),
-          ),
-        );
-      }
+      _showError("Izin penyimpanan diperlukan untuk memilih video.");
       return;
     }
 
@@ -296,16 +352,10 @@ class _AddEditMaterialScreenState extends State<AddEditMaterialScreen> {
       );
 
       if (picked != null && picked.files.isNotEmpty) {
-        setState(() {
-          _selectedVideo = File(picked.files.first.path!);
-        });
+        setState(() => _selectedVideo = File(picked.files.first.path!));
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error memilih video: $e")),
-        );
-      }
+      _showError("Error memilih video: $e");
     }
   }
 
@@ -314,13 +364,7 @@ class _AddEditMaterialScreenState extends State<AddEditMaterialScreen> {
     final allowed = await permService.requestFilePermission();
 
     if (!allowed) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Izin penyimpanan diperlukan untuk memilih dokumen."),
-          ),
-        );
-      }
+      _showError("Izin penyimpanan diperlukan untuk memilih dokumen.");
       return;
     }
 
@@ -331,63 +375,47 @@ class _AddEditMaterialScreenState extends State<AddEditMaterialScreen> {
       );
 
       if (picked != null && picked.files.isNotEmpty) {
-        setState(() {
-          _selectedDocument = File(picked.files.first.path!);
-        });
+        setState(() => _selectedDocument = File(picked.files.first.path!));
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error memilih dokumen: $e")),
-        );
-      }
+      _showError("Error memilih dokumen: $e");
     }
   }
 
   Future<void> _uploadSelectedDocument() async {
     if (_selectedDocument == null) return;
 
-  final permService = PermissionService();
-  final allowed = await permService.requestFilePermission();
+    final permService = PermissionService();
+    final allowed = await permService.requestFilePermission();
 
-  if (!allowed) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Izin penyimpanan diperlukan untuk mengunggah dokumen."),
-        ),
-      );
+    if (!allowed) {
+      _showError("Izin penyimpanan diperlukan untuk mengunggah dokumen.");
+      return;
     }
-    return;
-  }
 
     setState(() => _uploadingDocument = true);
 
     try {
-      final supabase = SupabaseService();
       final fileName = _selectedDocument!.path.split('/').last;
-      final url = await supabase.uploadDocument(_selectedDocument!, widget.initial?.id ?? DateTime.now().millisecondsSinceEpoch.toString());
+      final materialId = widget.initial?.id ?? DateTime.now().millisecondsSinceEpoch.toString();
+      
+      print('[MATERIAL] Starting document upload...');
+      final url = await _supabase.uploadDocument(_selectedDocument!, materialId);
 
-      if (url != null) {
+      if (url != null && url.isNotEmpty) {
+        print('[MATERIAL] Document URL received: $url');
         setState(() {
           _uploadedDocuments.add({'name': fileName, 'url': url});
           _selectedDocument = null;
         });
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Dokumen berhasil diunggah")),
-          );
-        }
+        _showSuccess("Dokumen berhasil diunggah");
       } else {
-        throw Exception('Gagal mengunggah dokumen');
+        print('[MATERIAL] Upload returned null or empty URL');
+        _showError("Gagal mengunggah dokumen - URL kosong");
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: $e")),
-        );
-      }
+      print('[MATERIAL] Error uploading document: $e');
+      _showError("Error: $e");
     } finally {
       setState(() => _uploadingDocument = false);
     }
@@ -395,14 +423,14 @@ class _AddEditMaterialScreenState extends State<AddEditMaterialScreen> {
 
   Future<void> _removeDocument(int index) async {
     final doc = _uploadedDocuments[index];
-    final supabase = SupabaseService();
     
-    final success = await supabase.deleteDocument(doc['url']!);
+    final success = await _supabase.deleteDocument(doc['url']!);
     
     if (success) {
-      setState(() {
-        _uploadedDocuments.removeAt(index);
-      });
+      setState(() => _uploadedDocuments.removeAt(index));
+      _showSuccess("Dokumen berhasil dihapus");
+    } else {
+      _showError("Gagal menghapus dokumen");
     }
   }
 
@@ -410,60 +438,87 @@ class _AddEditMaterialScreenState extends State<AddEditMaterialScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     if (_selectedSubjectId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Harap pilih mata pelajaran.")),
-      );
+      _showError("Harap pilih mata pelajaran.");
       return;
     }
 
     setState(() => _loading = true);
 
-    final id = widget.initial?.id ??
-        DateTime.now().millisecondsSinceEpoch.toString();
-
-    // Upload video if selected
-    if (_selectedVideo != null) {
-      setState(() => _uploadingVideo = true);
-
-      final supabase = SupabaseService();
-      final url = await supabase.uploadVideo(_selectedVideo!, id);
-
-      setState(() {
-        _videoUrl = url;
-        _uploadingVideo = false;
-      });
-    }
-
-    if (_selectedDocument != null) {
-    await _uploadSelectedDocument();
-    }
-
-    final k = KnowledgeModel(
-      id: id,
-      subjectId: _selectedSubjectId!,
-      jenis: _jenis,
-      kesulitan: _kesulitan,
-      judul: _judulCtrl.text.trim(),
-      konten: _kontenCtrl.text.trim(),
-      videoUrl: _videoUrl,
-      documents: _uploadedDocuments.isNotEmpty ? _uploadedDocuments : null,
-    );
+    final id = widget.initial?.id ?? DateTime.now().millisecondsSinceEpoch.toString();
 
     try {
+      // Upload video if selected
+      if (_selectedVideo != null) {
+        setState(() => _uploadingVideo = true);
+        print('[MATERIAL] Starting video upload...');
+        
+        final url = await _supabase.uploadVideo(_selectedVideo!, id);
+        
+        if (url != null && url.isNotEmpty) {
+          print('[MATERIAL] Video URL received: $url');
+          setState(() => _videoUrl = url);
+        } else {
+          print('[MATERIAL] Video upload returned null or empty URL');
+          _showError("Gagal mengunggah video - URL kosong");
+          setState(() => _uploadingVideo = false);
+          setState(() => _loading = false);
+          return;
+        }
+        
+        setState(() => _uploadingVideo = false);
+      }
+
+      // Upload document if selected
+      if (_selectedDocument != null) {
+        await _uploadSelectedDocument();
+      }
+
+      final k = KnowledgeModel(
+        id: id,
+        subjectId: _selectedSubjectId!,
+        jenis: _jenis,
+        kesulitan: _kesulitan,
+        judul: _judulCtrl.text.trim(),
+        konten: _kontenCtrl.text.trim(),
+        videoUrl: _videoUrl,
+        documents: _uploadedDocuments.isNotEmpty ? _uploadedDocuments : null,
+      );
+
       if (widget.initial == null) {
         await _fs.createKnowledge(k);
       } else {
         await _fs.updateKnowledge(k);
       }
 
-      if (mounted) Navigator.pop(context);
-    } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text("Error: $e")));
-        setState(() => _loading = false);
+        _showSuccess(widget.initial == null ? "Materi berhasil dibuat" : "Materi berhasil diperbarui");
+        Navigator.pop(context);
       }
+    } catch (e) {
+      print('[MATERIAL] Error saving material: $e');
+      _showError("Error: $e");
+      setState(() => _loading = false);
     }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _showSuccess(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   @override
@@ -471,28 +526,38 @@ class _AddEditMaterialScreenState extends State<AddEditMaterialScreen> {
     final isEdit = widget.initial != null;
 
     return Scaffold(
-      appBar:
-          AppBar(title: Text(isEdit ? "Edit Materi" : "Tambah Materi Baru")),
+      appBar: AppBar(
+        title: Text(isEdit ? "Edit Materi" : "Tambah Materi Baru"),
+        centerTitle: true,
+        elevation: 0,
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(16),
               child: Form(
                 key: _formKey,
                 child: ListView(
                   children: [
+                    // Title
                     TextFormField(
                       controller: _judulCtrl,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: "Judul Materi",
-                        border: OutlineInputBorder(),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
                       ),
                       validator: (v) =>
                           v == null || v.isEmpty ? "Harap isi judul." : null,
                     ),
+                    const SizedBox(height: 16),
 
-                    const SizedBox(height: 12),
-
+                    // Subject
                     DropdownButtonFormField<String>(
                       value: (_subjectsLoaded &&
                               _selectedSubjectId != null &&
@@ -506,18 +571,24 @@ class _AddEditMaterialScreenState extends State<AddEditMaterialScreen> {
                         ),
                       ).toList(),
                       onChanged: (v) => setState(() => _selectedSubjectId = v),
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: "Mata Pelajaran",
-                        border: OutlineInputBorder(),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
                       ),
                       validator: (v) =>
                           v == null || v.isEmpty ? "Pilih mata pelajaran" : null,
                       hint: const Text("Pilih mata pelajaran"),
                       isExpanded: true,
                     ),
+                    const SizedBox(height: 16),
 
-                    const SizedBox(height: 12),
-
+                    // Type
                     DropdownButtonFormField<String>(
                       value: _jenis,
                       items: const [
@@ -529,14 +600,20 @@ class _AddEditMaterialScreenState extends State<AddEditMaterialScreen> {
                             value: 'metakognitif', child: Text('Metakognitif')),
                       ],
                       onChanged: (v) => setState(() => _jenis = v!),
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: "Jenis Materi",
-                        border: OutlineInputBorder(),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
                       ),
                     ),
+                    const SizedBox(height: 16),
 
-                    const SizedBox(height: 12),
-
+                    // Difficulty
                     DropdownButtonFormField<String>(
                       value: allowedLevels.contains(_kesulitan) ? _kesulitan : 'kelas10',
                       items: const [
@@ -545,78 +622,108 @@ class _AddEditMaterialScreenState extends State<AddEditMaterialScreen> {
                         DropdownMenuItem(value: 'kelas12', child: Text('Kelas 12')),
                       ],
                       onChanged: (v) => setState(() => _kesulitan = v!),
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: "Tingkat Kelas",
-                        border: OutlineInputBorder(),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
                       ),
                     ),
+                    const SizedBox(height: 16),
 
-                    const SizedBox(height: 12),
-
+                    // Content
                     TextFormField(
                       controller: _kontenCtrl,
-                      maxLines: 8,
-                      decoration: const InputDecoration(
+                      maxLines: 5,
+                      decoration: InputDecoration(
                         labelText: "Konten Materi",
-                        border: OutlineInputBorder(),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
                       ),
                       validator: (v) =>
                           v == null || v.isEmpty ? "Harap isi konten." : null,
                     ),
+                    const SizedBox(height: 20),
 
-                    const SizedBox(height: 16),
-                    
-                    ElevatedButton(
-                      onPressed: _pickVideo,
-                      child: const Text("Pilih Video (MP4)"),
+                    // Video section
+                    const Text(
+                      'Video Materi (Opsional)',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-
+                    const SizedBox(height: 8),
+                    ElevatedButton.icon(
+                      onPressed: _pickVideo,
+                      icon: const Icon(Icons.video_library),
+                      label: const Text("Pilih Video (MP4)"),
+                    ),
                     if (_selectedVideo != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 8),
-                        child: Text(
-                          "Video dipilih: ${_selectedVideo!.path.split('/').last}",
-                          style: const TextStyle(fontSize: 12),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.check_circle, color: Colors.green),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _selectedVideo!.path.split('/').last,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-
                     if (_videoUrl != null && _selectedVideo == null)
                       Padding(
                         padding: const EdgeInsets.only(top: 8),
-                        child: Text(
-                          "Video sudah diunggah sebelumnya",
-                          style: const TextStyle(fontSize: 12, color: Colors.green),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.cloud_done, color: Colors.green),
+                            const SizedBox(width: 8),
+                            const Text(
+                              "Video sudah diunggah",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.green,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-
                     if (_uploadingVideo)
                       const Padding(
                         padding: EdgeInsets.only(top: 16),
-                        child: Center(
-                          child: Column(
-                            children: [
-                              CircularProgressIndicator(),
-                              SizedBox(height: 8),
-                              Text("Mengunggah video..."),
-                            ],
-                          ),
-                        ),
+                        child: LinearProgressIndicator(),
                       ),
 
                     const SizedBox(height: 24),
 
+                    // Documents section
                     const Text(
                       'Dokumen Materi (Opsional)',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-
-                    const SizedBox(height: 12),
-
-                    ElevatedButton(
+                    const SizedBox(height: 8),
+                    ElevatedButton.icon(
                       onPressed: _pickDocument,
-                      child: const Text("Pilih Dokumen (PDF, DOC, DOCX)"),
+                      icon: const Icon(Icons.description),
+                      label: const Text("Pilih Dokumen"),
                     ),
-
                     if (_selectedDocument != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 8),
@@ -624,25 +731,25 @@ class _AddEditMaterialScreenState extends State<AddEditMaterialScreen> {
                           children: [
                             Expanded(
                               child: Text(
-                                "Dokumen dipilih: ${_selectedDocument!.path.split('/').last}",
-                                style: const TextStyle(fontSize: 12),
+                                _selectedDocument!.path.split('/').last,
                                 overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 12),
                               ),
                             ),
                             ElevatedButton(
                               onPressed: _uploadingDocument ? null : _uploadSelectedDocument,
-                              child: const Text("Unggah"),
+                              child: Text(
+                                _uploadingDocument ? "Mengunggah..." : "Unggah",
+                              ),
                             ),
                           ],
                         ),
                       ),
-
                     if (_uploadingDocument)
                       const Padding(
                         padding: EdgeInsets.only(top: 8),
                         child: LinearProgressIndicator(),
                       ),
-
                     if (_uploadedDocuments.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(top: 12),
@@ -651,19 +758,26 @@ class _AddEditMaterialScreenState extends State<AddEditMaterialScreen> {
                           children: [
                             const Text(
                               'Dokumen yang Diunggah:',
-                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             const SizedBox(height: 8),
                             ..._uploadedDocuments.asMap().entries.map((e) {
                               final index = e.key;
                               final doc = e.value;
-                              
+
                               return Card(
                                 child: ListTile(
                                   leading: const Icon(Icons.description),
-                                  title: Text(doc['name']!),
+                                  title: Text(
+                                    doc['name']!,
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
                                   trailing: IconButton(
-                                    icon: const Icon(Icons.delete, color: Colors.red),
+                                    icon: const Icon(Icons.delete,
+                                        color: Colors.red),
                                     onPressed: () => _removeDocument(index),
                                   ),
                                 ),
@@ -675,13 +789,20 @@ class _AddEditMaterialScreenState extends State<AddEditMaterialScreen> {
 
                     const SizedBox(height: 24),
 
+                    // Save button
                     ElevatedButton(
-                      onPressed: _uploadingVideo || _uploadingDocument ? null : _save,
+                      onPressed: _uploadingVideo || _uploadingDocument
+                          ? null
+                          : _save,
                       style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
-                      child: Text(isEdit ? "Simpan Perubahan" : "Buat Materi"),
+                      child: Text(
+                        isEdit ? "Simpan Perubahan" : "Buat Materi",
+                        style: const TextStyle(fontSize: 14),
+                      ),
                     ),
+                    const SizedBox(height: 16),
                   ],
                 ),
               ),

@@ -10,17 +10,24 @@ class SupabaseService {
     final filePath = 'materials/$fileName';
 
     try {
+      print('[SUPABASE] Uploading video to bucket: Video_Materi');
       final res = await _client.storage
           .from('Video_Materi')
           .upload(filePath, file, fileOptions: const FileOptions(upsert: true));
 
-      if (res.isEmpty) return null;
+      if (res.isEmpty) {
+        print('[SUPABASE] Video upload failed: response is empty');
+        return null;
+      }
 
-      return _client.storage
+      final publicUrl = _client.storage
           .from('Video_Materi')
           .getPublicUrl(filePath);
+      
+      print('[SUPABASE] Video uploaded successfully: $publicUrl');
+      return publicUrl;
     } catch (e) {
-      print('Error uploading video: $e');
+      print('[SUPABASE] Error uploading video: $e');
       return null;
     }
   }
@@ -32,17 +39,36 @@ class SupabaseService {
     final filePath = 'materials/$fileName';
 
     try {
+      print('[SUPABASE] ========== DOCUMENT UPLOAD START ==========');
+      print('[SUPABASE] Material ID: $materialId');
+      print('[SUPABASE] File: ${file.path}');
+      print('[SUPABASE] Extension: $fileExtension');
+      print('[SUPABASE] File name: $fileName');
+      print('[SUPABASE] File path: $filePath');
+      print('[SUPABASE] File size: ${file.lengthSync()} bytes');
+      
       final res = await _client.storage
-          .from('Document_Materi')
+          .from('Documents')
           .upload(filePath, file, fileOptions: const FileOptions(upsert: true));
 
-      if (res.isEmpty) return null;
+      print('[SUPABASE] Upload response: $res');
 
-      return _client.storage
+      if (res.isEmpty) {
+        print('[SUPABASE] ERROR: Document upload failed - response is empty');
+        return null;
+      }
+
+      final publicUrl = _client.storage
           .from('Documents')
           .getPublicUrl(filePath);
+      
+      print('[SUPABASE] Document uploaded successfully!');
+      print('[SUPABASE] Public URL: $publicUrl');
+      print('[SUPABASE] ========== DOCUMENT UPLOAD END ==========');
+      return publicUrl;
     } catch (e) {
-      print('Error uploading document: $e');
+      print('[SUPABASE] ERROR uploading document: $e');
+      print('[SUPABASE] Error type: ${e.runtimeType}');
       return null;
     }
   }
@@ -50,19 +76,29 @@ class SupabaseService {
   /// Delete document from storage
   Future<bool> deleteDocument(String documentUrl) async {
     try {
+      print('[SUPABASE] Deleting document: $documentUrl');
+      
       final uri = Uri.parse(documentUrl);
       final pathSegments = uri.pathSegments;
       
       // Extract file path from URL
-      final filePath = pathSegments.sublist(pathSegments.indexOf('Document_Materi') + 1).join('/');
+      final bucketIndex = pathSegments.indexOf('Documents');
+      if (bucketIndex == -1) {
+        print('[SUPABASE] Could not find documents in URL');
+        return false;
+      }
+      
+      final filePath = pathSegments.sublist(bucketIndex + 1).join('/');
+      print('[SUPABASE] Extracted file path: $filePath');
       
       await _client.storage
-          .from('Document_Materi')
+          .from('Documents')
           .remove([filePath]);
       
+      print('[SUPABASE] Document deleted successfully');
       return true;
     } catch (e) {
-      print('Error deleting document: $e');
+      print('[SUPABASE] Error deleting document: $e');
       return false;
     }
   }

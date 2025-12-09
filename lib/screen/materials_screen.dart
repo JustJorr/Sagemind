@@ -20,13 +20,22 @@ class _MaterialsScreenState extends State<MaterialsScreen> {
         ModalRoute.of(context)!.settings.arguments as SubjectModel;
 
     return Scaffold(
+      appBar: AppBar(
+        title: Text(subject.nama),
+        centerTitle: true,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+
       body: Column(
         children: [
           _buildFilterChips(),
           Expanded(
             child: FutureBuilder<List<KnowledgeModel>>(
-              future:
-                  _fs.getKnowledgeBySubjectAndType(subject.id, selectedType),
+              future: _fs.getKnowledgeBySubjectAndType(subject.id, selectedType),
               builder: (context, snap) {
                 if (snap.hasError) {
                   return const Center(child: Text('Error memuat materi'));
@@ -95,7 +104,6 @@ class _MaterialsScreenState extends State<MaterialsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Title
               Text(
                 m.judul,
                 style:
@@ -103,7 +111,6 @@ class _MaterialsScreenState extends State<MaterialsScreen> {
               ),
               const SizedBox(height: 6),
 
-              // Type
               Container(
                 padding:
                     const EdgeInsets.symmetric(vertical: 4, horizontal: 10),
@@ -119,7 +126,6 @@ class _MaterialsScreenState extends State<MaterialsScreen> {
 
               const SizedBox(height: 8),
 
-              // Short Preview
               Text(
                 m.konten.length > 80
                     ? '${m.konten.substring(0, 80)}...'
@@ -129,15 +135,11 @@ class _MaterialsScreenState extends State<MaterialsScreen> {
 
               const SizedBox(height: 12),
 
-              // Recommendation Button
               Align(
                 alignment: Alignment.bottomRight,
                 child: TextButton(
-                  onPressed: () => Navigator.pushNamed(
-                    context,
-                    '/recommendation',
-                    arguments: m,
-                  ),
+                  onPressed: () =>
+                      Navigator.pushNamed(context, '/recommendation', arguments: m),
                   child: const Text('Lihat Rekomendasi'),
                 ),
               )
