@@ -5,6 +5,7 @@ import '../models/rule_model.dart';
 import '../models/user_model.dart';
 import '../models/conversation_model.dart';
 import '../models/message_model.dart';
+import 'expert_engine.dart';
 
 class FirestoreServices {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -141,29 +142,40 @@ class FirestoreServices {
     String materialId, {
     String? subjectId,
   }) async {
-    Query query = _db
-        .collection('rules')
-        .where('material_id', isEqualTo: materialId);
+    // 1. Fetch the Material details first.
+    // We need the TITLE (Judul) because matching text is better than matching IDs.
+    final knowledgeDoc = await _db.collection('knowledge').doc(materialId).get();
+    
+    if (!knowledgeDoc.exists) return null;
 
+    final Map<String, dynamic> kData = knowledgeDoc.data() as Map<String, dynamic>;
+    final String materialTitle = (kData['judul'] ?? '').toString();
+
+    // 2. Fetch all rules (filtering by subject from DB is faster)
+    List<RuleModel> candidates;
     if (subjectId != null) {
-      query = query.where('subject_id', isEqualTo: subjectId);
+      candidates = await getRulesBySubject(subjectId);
+    } else {
+      candidates = await getAllRules();
     }
 
-    final snapExact = await query.limit(1).get();
-
-    if (snapExact.docs.isNotEmpty) {
-      final data = snapExact.docs.first.data() as Map<String, dynamic>;
-      return RuleModel.fromMap(snapExact.docs.first.id, data);
+    // 3. USE EXPERT ENGINE - STEP A: Exact ID Match
+    // (If you linked them manually in Admin Panel)
+    final exactMatch = ExpertEngine.inferFromMaterial(materialId, candidates);
+    if (exactMatch != null) {
+      print("DEBUG: Found by Exact ID Match");
+      return exactMatch;
     }
 
-    final all = await getAllRules();
+    // 4. USE EXPERT ENGINE - STEP B: Fuzzy Text Match
+    // Pass the Material TITLE (e.g., "Algebra") to see if any Rule mentions "Algebra"
+    final scoredRules = ExpertEngine.scoreRulesByCondition(materialTitle, candidates);
 
-    for (var r in all) {
-      if ((r.kondisi.toLowerCase().contains(materialId.toLowerCase()) ||
-              r.rekomendasi.toLowerCase().contains(materialId.toLowerCase())) &&
-          (subjectId == null || r.subjectId == subjectId)) {
-        return r;
-      }
+    if (scoredRules.isNotEmpty) {
+      // Return the highest scoring rule
+      final bestMatch = scoredRules.first;
+      print("DEBUG: Found by Text Match (Score: ${bestMatch.score})");
+      return bestMatch.rule;
     }
 
     return null;

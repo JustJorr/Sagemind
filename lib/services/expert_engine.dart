@@ -8,11 +8,17 @@ class RuleScore {
 }
 
 class ExpertEngine {
-  /// Exact match – earlier function
-  static RuleModel? inferFromCondition(String input, List<RuleModel> rules) {
+  // 🔹 Exact match by condition (with optional subject filter)
+  static RuleModel? inferFromCondition(
+    String input,
+    List<RuleModel> rules, {
+    String? subjectId,
+  }) {
     input = input.toLowerCase();
 
     for (final r in rules) {
+      if (subjectId != null && r.subjectId != subjectId) continue;
+
       if (r.kondisi.toLowerCase().contains(input)) {
         return r;
       }
@@ -20,9 +26,15 @@ class ExpertEngine {
     return null;
   }
 
-  /// Exact material match – earlier function
-  static RuleModel? inferFromMaterial(String materialId, List<RuleModel> rules) {
+  // 🔹 Exact match by material (with optional subject filter)
+  static RuleModel? inferFromMaterial(
+    String materialId,
+    List<RuleModel> rules, {
+    String? subjectId,
+  }) {
     for (final r in rules) {
+      if (subjectId != null && r.subjectId != subjectId) continue;
+
       if (r.materialId == materialId) {
         return r;
       }
@@ -30,28 +42,27 @@ class ExpertEngine {
     return null;
   }
 
-  // --------------------------------------------------------------------------
-  // 🔥 Step C — Fuzzy Scoring Recommendation Engine
-  // --------------------------------------------------------------------------
-
-  /// Hitung skor kecocokan antara input user dan kondisi rule
+  // 🔥 Fuzzy Scoring Recommendation Engine
   static List<RuleScore> scoreRulesByCondition(
-      String input, List<RuleModel> rules) {
+    String input,
+    List<RuleModel> rules, {
+    String? subjectId,
+  }) {
     input = input.toLowerCase();
-
     List<RuleScore> outputs = [];
 
     for (final rule in rules) {
-      final kondisi = rule.kondisi.toLowerCase();
+      if (subjectId != null && rule.subjectId != subjectId) continue;
 
+      final kondisi = rule.kondisi.toLowerCase();
       double score = 0;
 
-      // 1) exact contains → skor besar
+      // 1) Exact contains → strong score
       if (kondisi.contains(input)) {
         score += 0.6;
       }
 
-      // 2) fuzzy word matching
+      // 2) Word-level fuzzy matching
       final inputWords = input.split(' ');
       for (final w in inputWords) {
         if (w.isEmpty) continue;
@@ -60,7 +71,7 @@ class ExpertEngine {
         }
       }
 
-      // 3) similarity (Levenshtein ratio)
+      // 3) Similarity score
       score += _stringSimilarity(input, kondisi) * 0.3;
 
       if (score > 0) {
@@ -68,13 +79,11 @@ class ExpertEngine {
       }
     }
 
-    // descending sort by score
     outputs.sort((a, b) => b.score.compareTo(a.score));
-
     return outputs;
   }
 
-  /// Levenshtein similarity for fuzzy matching
+  // 🔧 Levenshtein similarity helper
   static double _stringSimilarity(String a, String b) {
     int distance = _levenshtein(a, b);
     int maxLen = a.length > b.length ? a.length : b.length;

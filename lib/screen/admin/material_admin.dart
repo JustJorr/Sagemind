@@ -193,7 +193,7 @@ class _AdminMaterialScreenState extends State<AdminMaterialScreen> {
                                   trailing: PopupMenuButton(
                                     itemBuilder: (context) => [
                                       PopupMenuItem(
-                                        child: const Text("Edit"),
+                                        child: const Text("Sunting"),
                                         onTap: () async {
                                           await Navigator.push(
                                             context,
@@ -355,7 +355,7 @@ class _AddEditMaterialScreenState extends State<AddEditMaterialScreen> {
         setState(() => _selectedVideo = File(picked.files.first.path!));
       }
     } catch (e) {
-      _showError("Error memilih video: $e");
+      _showError("Kesalahan memilih video: $e");
     }
   }
 
@@ -378,7 +378,7 @@ class _AddEditMaterialScreenState extends State<AddEditMaterialScreen> {
         setState(() => _selectedDocument = File(picked.files.first.path!));
       }
     } catch (e) {
-      _showError("Error memilih dokumen: $e");
+      _showError("Kesalahan memilih dokumen: $e");
     }
   }
 

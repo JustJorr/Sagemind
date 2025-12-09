@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../models/user_model.dart';
 import '../core/theme/colors.dart';
-import 'home_screen.dart';
-import 'admin/admin_dashboard_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -20,103 +18,226 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _confirmPasswordController = TextEditingController();
   final AuthService _authService = AuthService();
   bool _isLoading = false;
-
-  final Color mainBlue = SMColors.blue;
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // CHANGED
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 60),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Text(
-                  "SageMind",
-                  style: TextStyle(
-                    fontSize: 38,
-                    fontWeight: FontWeight.bold,
-                    color: mainBlue, // CHANGED
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Logo/Icon
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: SMColors.blue.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.school_rounded,
+                      size: 64,
+                      color: SMColors.blue,
+                    ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 40),
+                  const SizedBox(height: 24),
 
-              _buildField("Email", _emailController),
-              const SizedBox(height: 16),
+                  // App Title
+                  Text(
+                    "SageMind",
+                    style: TextStyle(
+                      fontSize: 36,
+                      fontWeight: FontWeight.bold,
+                      color: SMColors.blue,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Buat akun kamu",
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 40),
 
-              _buildField("Username", _usernameController),
-              const SizedBox(height: 16),
+                  // Email Field
+                  _buildTextField(
+                    controller: _emailController,
+                    label: "Email",
+                    prefixIcon: Icons.email_outlined,
+                    validator: (v) {
+                      if (v == null || v.isEmpty) return "Please enter email";
+                      if (!v.contains("@")) return "Enter a valid email";
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
 
-              _buildField("Password", _passwordController, obscure: true),
-              const SizedBox(height: 16),
+                  // Username Field
+                  _buildTextField(
+                    controller: _usernameController,
+                    label: "Username",
+                    prefixIcon: Icons.person_outline,
+                  ),
+                  const SizedBox(height: 16),
 
-              _buildField("Confirm Password", _confirmPasswordController, obscure: true),
-              const SizedBox(height: 28),
+                  // Password Field
+                  _buildTextField(
+                    controller: _passwordController,
+                    label: "Password",
+                    prefixIcon: Icons.lock_outline,
+                    obscureText: _obscurePassword,
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                        color: Colors.grey[600],
+                      ),
+                      onPressed: () {
+                        setState(() => _obscurePassword = !_obscurePassword);
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 16),
 
-              _isLoading
-                  ? const Center(child: CircularProgressIndicator(color: Colors.black))
-                  : ElevatedButton(
-                      onPressed: _register,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: mainBlue, // CHANGED
-                        minimumSize: const Size(double.infinity, 50),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                  // Confirm Password Field
+                  _buildTextField(
+                    controller: _confirmPasswordController,
+                    label: "Konfirmasi Password",
+                    prefixIcon: Icons.lock_outline,
+                    obscureText: _obscureConfirmPassword,
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscureConfirmPassword
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                        color: Colors.grey[600],
+                      ),
+                      onPressed: () {
+                        setState(
+                            () => _obscureConfirmPassword = !_obscureConfirmPassword);
+                      },
+                    ),
+                    validator: (v) {
+                      if (v == null || v.isEmpty) return "Please confirm password";
+                      if (v != _passwordController.text) {
+                        return "Passwords do not match";
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 28),
+
+                  // Register Button
+                  _isLoading
+                      ? CircularProgressIndicator(color: SMColors.blue)
+                      : SizedBox(
+                          width: double.infinity,
+                          height: 54,
+                          child: ElevatedButton(
+                            onPressed: _register,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: SMColors.blue,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: const Text(
+                              "Mendaftar",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                  const SizedBox(height: 20),
+
+                  // Login Link
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        "Sudah punya akun? ",
+                        style: TextStyle(color: Colors.grey[600]),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          minimumSize: const Size(0, 0),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: Text(
+                          "Login",
+                          style: TextStyle(
+                            color: SMColors.blue,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
-                      child: const Text(
-                        "Register",
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    ),
-
-              const SizedBox(height: 16),
-
-              Center(
-                child: TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text(
-                    "Already have an account? Login",
-                    style: TextStyle(color: Colors.black87), // CHANGED
+                    ],
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildField(String label, TextEditingController controller, {bool obscure = false}) {
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData prefixIcon,
+    bool obscureText = false,
+    Widget? suffixIcon,
+    String? Function(String?)? validator,
+  }) {
     return TextFormField(
       controller: controller,
-      obscureText: obscure,
-      style: const TextStyle(color: Colors.black), // CHANGED
-      cursorColor: Colors.black, // CHANGED
+      obscureText: obscureText,
+      style: const TextStyle(fontSize: 15),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: Colors.black87), // CHANGED
-        enabledBorder: const UnderlineInputBorder(
-          borderSide: BorderSide(color: Colors.black26), // CHANGED
+        labelStyle: TextStyle(color: Colors.grey[600]),
+        prefixIcon: Icon(prefixIcon, color: Colors.grey[600]),
+        suffixIcon: suffixIcon,
+        filled: true,
+        fillColor: Colors.grey[50],
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
         ),
-        focusedBorder: const UnderlineInputBorder(
-          borderSide: BorderSide(color: Colors.black), // CHANGED
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey[200]!),
         ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: SMColors.blue, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.red),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
-      validator: (v) {
-        if (v == null || v.isEmpty) return "Please enter $label";
-        if (label == "Email" && !v.contains("@")) return "Enter a valid email";
-        if (label == "Confirm Password" && v != _passwordController.text) {
-          return "Passwords do not match";
-        }
-        return null;
-      },
+      validator: validator ??
+          (v) => (v == null || v.isEmpty) ? "Please enter $label" : null,
     );
   }
 
@@ -128,24 +249,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _emailController.text.trim(),
         _passwordController.text,
         _usernameController.text.trim(),
-        "user", // DEFAULT ROLE
+        "user",
       );
 
       setState(() => _isLoading = false);
 
       if (user != null) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) =>
-                user.role == "admin" ? const AdminDashboardScreen() : HomeScreen(),
-          ),
-        );
+        Navigator.pushReplacementNamed(context, "/");
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Registration failed")),
+          SnackBar(
+            content: const Text("Registration failed. Please try again."),
+            backgroundColor: Colors.red[400],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
         );
       }
     }
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _usernameController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
   }
 }
