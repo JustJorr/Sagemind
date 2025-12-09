@@ -177,77 +177,81 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Widget _buildSidebar() {
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: Colors.blue,
-                    borderRadius: BorderRadius.circular(12),
+    return Container(
+      color: Colors.white,
+      child: SingleChildScrollView(
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: Colors.blue,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.admin_panel_settings,
+                      color: Colors.white,
+                      size: 32,
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.admin_panel_settings,
-                    color: Colors.white,
-                    size: 32,
+                  const SizedBox(height: 12),
+                  const Text(
+                    "Panel Admin",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  "Panel Admin",
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Divider(),
-          _buildSidebarItem(
-            icon: Icons.menu_book_rounded,
-            title: "Kelola Mata Pelajaran",
-            route: "/admin/subjects",
-          ),
-          _buildSidebarItem(
-            icon: Icons.library_books,
-            title: "Kelola Materi",
-            route: "/admin/materials",
-          ),
-          _buildSidebarItem(
-            icon: Icons.rule_folder,
-            title: "Kelola Aturan",
-            route: "/admin/rules",
-          ),
-          const Divider(),
-          _buildSidebarItem(
-            icon: Icons.switch_account,
-            title: "Tampilan Pengguna",
-            route: "/user",
-          ),
-          const Divider(),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: ElevatedButton.icon(
-              onPressed: () => _logout(context),
-              icon: const Icon(Icons.logout),
-              label: const Text("Logout"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-                minimumSize: const Size(double.infinity, 48),
+                ],
               ),
             ),
-          ),
-        ],
+            const Divider(),
+            _buildSidebarItem(
+              icon: Icons.menu_book_rounded,
+              title: "Kelola Mata Pelajaran",
+              route: "/admin/subjects",
+            ),
+            _buildSidebarItem(
+              icon: Icons.library_books,
+              title: "Kelola Materi",
+              route: "/admin/materials",
+            ),
+            _buildSidebarItem(
+              icon: Icons.rule_folder,
+              title: "Kelola Aturan",
+              route: "/admin/rules",
+            ),
+            const Divider(),
+            _buildSidebarItem(
+              icon: Icons.switch_account,
+              title: "Tampilan Pengguna",
+              route: "/user",
+            ),
+            const Divider(),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: ElevatedButton.icon(
+                onPressed: () => _logout(context),
+                icon: const Icon(Icons.logout),
+                label: const Text("Logout"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 48),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
+
 
   Widget _buildSidebarItem({
     required IconData icon,
