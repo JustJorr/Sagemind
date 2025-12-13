@@ -77,28 +77,57 @@ class SupabaseService {
   Future<bool> deleteDocument(String documentUrl) async {
     try {
       print('[SUPABASE] Deleting document: $documentUrl');
-      
+
       final uri = Uri.parse(documentUrl);
       final pathSegments = uri.pathSegments;
-      
+
       // Extract file path from URL
       final bucketIndex = pathSegments.indexOf('Documents');
       if (bucketIndex == -1) {
         print('[SUPABASE] Could not find documents in URL');
         return false;
       }
-      
+
       final filePath = pathSegments.sublist(bucketIndex + 1).join('/');
       print('[SUPABASE] Extracted file path: $filePath');
-      
+
       await _client.storage
           .from('Documents')
           .remove([filePath]);
-      
+
       print('[SUPABASE] Document deleted successfully');
       return true;
     } catch (e) {
       print('[SUPABASE] Error deleting document: $e');
+      return false;
+    }
+  }
+
+  Future<bool> deleteVideo(String videoUrl) async {
+    try {
+      print('[SUPABASE] Deleting video: $videoUrl');
+
+      final uri = Uri.parse(videoUrl);
+      final pathSegments = uri.pathSegments;
+
+      // Extract file path from URL
+      final bucketIndex = pathSegments.indexOf('Video_Materi');
+      if (bucketIndex == -1) {
+        print('[SUPABASE] Could not find Video_Materi in URL');
+        return false;
+      }
+
+      final filePath = pathSegments.sublist(bucketIndex + 1).join('/');
+      print('[SUPABASE] Extracted file path: $filePath');
+
+      await _client.storage
+          .from('Video_Materi')
+          .remove([filePath]);
+
+      print('[SUPABASE] Video deleted successfully');
+      return true;
+    } catch (e) {
+      print('[SUPABASE] Error deleting video: $e');
       return false;
     }
   }

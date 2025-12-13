@@ -2,7 +2,7 @@ class UserModel {
   final String id;
   final String email;
   final String username;
-  final String role; // 'user' or 'admin'
+  final String role; 
 
   UserModel({
     required this.id,

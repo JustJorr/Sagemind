@@ -423,14 +423,27 @@ class _AddEditMaterialScreenState extends State<AddEditMaterialScreen> {
 
   Future<void> _removeDocument(int index) async {
     final doc = _uploadedDocuments[index];
-    
+
     final success = await _supabase.deleteDocument(doc['url']!);
-    
+
     if (success) {
       setState(() => _uploadedDocuments.removeAt(index));
       _showSuccess("Dokumen berhasil dihapus");
     } else {
       _showError("Gagal menghapus dokumen");
+    }
+  }
+
+  Future<void> _removeVideo() async {
+    if (_videoUrl == null) return;
+
+    final success = await _supabase.deleteVideo(_videoUrl!);
+
+    if (success) {
+      setState(() => _videoUrl = null);
+      _showSuccess("Video berhasil dihapus");
+    } else {
+      _showError("Gagal menghapus video");
     }
   }
 
@@ -692,12 +705,19 @@ class _AddEditMaterialScreenState extends State<AddEditMaterialScreen> {
                           children: [
                             const Icon(Icons.cloud_done, color: Colors.green),
                             const SizedBox(width: 8),
-                            const Text(
-                              "Video sudah diunggah",
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.green,
+                            const Expanded(
+                              child: Text(
+                                "Video sudah diunggah",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.green,
+                                ),
                               ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              onPressed: _removeVideo,
+                              tooltip: 'Hapus Video',
                             ),
                           ],
                         ),

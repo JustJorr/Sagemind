@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 
 class PermissionService {
   static final PermissionService _instance = PermissionService._internal();
@@ -71,5 +72,37 @@ class PermissionService {
     }
 
     return false;
+  }
+
+  // Add this method to your PermissionService class
+  Future<bool> requestDownloadPermission() async {
+    if (Platform.isAndroid) {
+      final androidVersion = await _getAndroidVersion();
+      
+      // Android 13+ (API 33+) doesn't need storage permission for downloads
+      if (androidVersion >= 33) {
+        return true;
+      }
+      
+      // Android 10-12 (API 29-32)
+      if (androidVersion >= 29) {
+        // Scoped storage - no permission needed for app-specific directory
+        return true;
+      }
+      
+      // Android 9 and below (API 28-)
+      final status = await Permission.storage.request();
+      return status.isGranted;
+    }
+    
+    return true; // iOS doesn't need this permission
+  }
+
+  Future<int> _getAndroidVersion() async {
+    if (Platform.isAndroid) {
+      final androidInfo = await DeviceInfoPlugin().androidInfo;
+      return androidInfo.version.sdkInt;
+    }
+    return 0;
   }
 }

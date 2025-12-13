@@ -200,8 +200,6 @@ class _SearchScreenState extends State<SearchScreen> {
               ],
             ),
           ),
-
-          // Filters Section
           Container(
             padding: const EdgeInsets.all(16),
             color: Colors.white,

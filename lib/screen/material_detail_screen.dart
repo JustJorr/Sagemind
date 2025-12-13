@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import '../models/knowledge_model.dart';
 import '../services/firestore_services.dart';
+import '../services/download_service.dart';
+import '../services/permission_service.dart';
 import '../models/rule_model.dart';
 import 'package:video_player/video_player.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class MaterialDetailScreen extends StatefulWidget {
   const MaterialDetailScreen({super.key});
@@ -14,8 +15,15 @@ class MaterialDetailScreen extends StatefulWidget {
 
 class _MaterialDetailScreenState extends State<MaterialDetailScreen> {
   final FirestoreServices _fs = FirestoreServices();
+  final DownloadService _downloadService = DownloadService();
+  final PermissionService _permissionService = PermissionService();
+  
   RuleModel? _suggestion;
   bool _loadingSuggestion = false;
+  
+  // Track download progress for each document
+  final Map<String, double> _downloadProgress = {};
+  final Map<String, bool> _isDownloading = {};
 
   Future<void> _fetchSuggestion(KnowledgeModel m) async {
     setState(() {
@@ -32,20 +40,82 @@ class _MaterialDetailScreenState extends State<MaterialDetailScreen> {
   }
 
   Future<void> _downloadDocument(String url, String fileName) async {
-  try {
-    if (await canLaunchUrl(Uri.parse(url))) {
-      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Tidak dapat membuka dokumen")),
-      );
+    // Check permissions first
+    final hasPermission = await _permissionService.requestDownloadPermission();
+    
+    if (!hasPermission) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Izin penyimpanan diperlukan untuk mengunduh dokumen"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
     }
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Error: $e")),
-    );
+
+    // Start downloading
+    setState(() {
+      _isDownloading[url] = true;
+      _downloadProgress[url] = 0.0;
+    });
+
+    try {
+      final filePath = await _downloadService.downloadDocument(
+        url,
+        fileName,
+        onProgress: (received, total) {
+          if (total != -1) {
+            setState(() {
+              _downloadProgress[url] = received / total;
+            });
+          }
+        },
+      );
+
+      setState(() {
+        _isDownloading[url] = false;
+        _downloadProgress.remove(url);
+      });
+
+      if (filePath != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Dokumen berhasil diunduh ke: Downloads/$fileName"),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: 'OK',
+              textColor: Colors.white,
+              onPressed: () {},
+            ),
+          ),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Gagal mengunduh dokumen"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _isDownloading[url] = false;
+        _downloadProgress.remove(url);
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error: $e"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -87,15 +157,57 @@ class _MaterialDetailScreenState extends State<MaterialDetailScreen> {
                   ),
                   const SizedBox(height: 8),
                   ...material.documents!.map((doc) {
+                    final url = doc['url'] ?? '';
+                    final name = doc['name'] ?? 'Dokumen';
+                    final isDownloading = _isDownloading[url] ?? false;
+                    final progress = _downloadProgress[url];
+
                     return Card(
-                      child: ListTile(
-                        leading: const Icon(Icons.description, color: Colors.blue),
-                        title: Text(doc['name'] ?? 'Dokumen'),
-                        trailing: const Icon(Icons.download),
-                        onTap: () => _downloadDocument(
-                          doc['url'] ?? '',
-                          doc['name'] ?? 'dokumen',
-                        ),
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: Column(
+                        children: [
+                          ListTile(
+                            leading: const Icon(Icons.description, color: Colors.blue),
+                            title: Text(name),
+                            subtitle: isDownloading
+                                ? Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const SizedBox(height: 4),
+                                      const Text(
+                                        'Mengunduh...',
+                                        style: TextStyle(fontSize: 12),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      LinearProgressIndicator(
+                                        value: progress,
+                                        backgroundColor: Colors.grey[300],
+                                        valueColor: const AlwaysStoppedAnimation<Color>(
+                                          Colors.blue,
+                                        ),
+                                      ),
+                                      if (progress != null)
+                                        Text(
+                                          '${(progress * 100).toStringAsFixed(0)}%',
+                                          style: const TextStyle(fontSize: 10),
+                                        ),
+                                    ],
+                                  )
+                                : null,
+                            trailing: isDownloading
+                                ? const SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(Icons.download),
+                            onTap: isDownloading
+                                ? null
+                                : () => _downloadDocument(url, name),
+                          ),
+                        ],
                       ),
                     );
                   }).toList(),
@@ -141,7 +253,6 @@ class _MaterialDetailScreenState extends State<MaterialDetailScreen> {
   }
 }
 
-// REUSABLE VIDEO PLAYER WIDGET
 class VideoPlayerWidget extends StatefulWidget {
   final String url;
   const VideoPlayerWidget({super.key, required this.url});
